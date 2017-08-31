@@ -1,0 +1,28 @@
+// pbTableHeader.proto
+package pbTableHeader;
+syntax = "proto3";
+
+message Transform {
+  optional int32 offset = 1;
+  optional int32 multip = 2;
+  optional int32 decimals = 3;
+  optional bool sequence = 4;
+}
+
+message Field {
+  required string name = 1;
+  required string type = 2;
+  optional Transform transform = 6;
+}
+
+message Meta {
+  optional string name = 1;
+  optional string owner = 2;
+  optional string link = 3;
+  optional string comment = 4;
+}
+
+message tableHead {
+  repeated Field header = 1;
+  optional Meta meta = 2
+}

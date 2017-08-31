@@ -1,0 +1,41 @@
+{
+  "name": "protobuf-table",
+  "version": "1.0.0",
+  "description": "A dynamic protobuf implementation for structured table data",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "test/pbTable.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mappazzo/protobuf-table.git"
+  },
+  "keywords": [
+    "protobuf",
+    "structured",
+    "data",
+    "compression",
+    "binary",
+    "big",
+    "javascript",
+    "js",
+    "node"
+  ],
+  "author": "Kelly Norris",
+  "license": "Beerware",
+  "bugs": {
+    "url": "https://github.com/mappazzo/protobuf-table/issues"
+  },
+  "homepage": "https://github.com/mappazzo/protobuf-table#readme",
+  "dependencies": {
+    "lodash": "^4.17.4",
+    "protobufjs": "^6.8.0"
+  },
+  "devDependencies": {
+    "autoprefixer": "^6",
+    "babel-brunch": "^6",
+    "babel-preset-env": "^1.6.0",
+    "brunch": "^2",
+    "uglify-js-brunch": "^2"
+  }
+}
