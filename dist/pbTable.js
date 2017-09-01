@@ -1,10 +1,15 @@
 'use strict';
 
-// Mappazzo (c) 2017
-// protocol buffer implimentation for variable format structured tables
+// "THE BEER-WARE LICENSE" (Revision 42):
+// Mappazzo (info@mappazzo.com) wrote this file. As long as you retain this notice you
+// can do whatever you want with this stuff. If we meet some day, and you think
+// this stuff is worth it, you can buy me a beer in return. Cheers, Kelly Norris
+
+// Protocol buffer implimentation for variable format structured tables
 
 //* global pbuf */
 var pbuf = require('protobufjs');
+
 var Root = pbuf.Root;
 var Reader = pbuf.Reader;
 var Writer = pbuf.Writer;

@@ -1,8 +1,8 @@
 {
   "name": "protobuf-table",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A dynamic protobuf implementation for structured table data",
-  "main": "src/index.js",
+  "main": "src/pbTable.js",
   "scripts": {
     "build-dev": "babel src/pbTable.js -o dist/pbTable.js",
     "build-min": "cross-env BABEL_ENV=production babel src/pbTable.js -o dist/pbTable-min.js",

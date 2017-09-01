@@ -2,7 +2,9 @@
 # protobuf-table
 ## A dynamic protobuf implementation for structured table data
 
-Tests and documentation under development. Stay tuned
+[software by mappazzo](https://www.mappazzo.com)
+
+Basic tests and compression protocol tested and working. Detailed documentation under development... Stay tuned
 
 ## Purpose
 
@@ -10,12 +12,10 @@ Tests and documentation under development. Stay tuned
 
 This software is 'Beerware'
 
- ----------------------------------------------------------------------------
- "THE BEER-WARE LICENSE" (Revision 42):
- [Mappazzo](mailto:info@mappazzo.com) wrote this file. As long as you retain this notice you
- can do whatever you want with this stuff. If we meet some day, and you think
- this stuff is worth it, you can buy me a beer in return. Cheers, Kelly Norris
- ----------------------------------------------------------------------------
+"THE BEER-WARE LICENSE" (Revision 42):
+[Mappazzo](mailto:info@mappazzo.com) wrote this file. As long as you retain this notice you
+can do whatever you want with this stuff. If we meet some day, and you think
+this stuff is worth it, you can buy me a beer in return. Cheers, Kelly Norris
 
 ## Basic Usage
 
@@ -83,8 +83,36 @@ and
 
     pbTable.addTable(buffer, data, callback(err, buffer) { } )
 
+## Compressing data
 
-### Installation
+We can making use of Proto Buffers integer compression by transforming structured data via offset, multiplication and sequencing.
+
+Transform your 'float' and 'int' data using inbuilt data transformation
+
+    header: [
+      {
+        name: 'latitude',
+        type: 'int',
+        transform: {
+          offset: -42.2454,
+          decimals: 4,
+          sequence: true
+        }  
+      },
+      {
+        name: 'longitude',
+        type: 'int',
+        transform: {
+          offset: 173.9302,
+          multip: 10000,
+        }  
+      },
+      ...
+    ]
+
+more examples and documentation coming......
+
+# Installation
 
 ## For packaging with NPM and ES6
 
@@ -98,7 +126,7 @@ and then:
 
     var pbTable = require('./dist/pbTable-min.js')
 
-### Building and Testing
+# Building and Testing
 
 Build
 
@@ -107,5 +135,3 @@ Build
 Build and test
 
     npm run test
-
-[software by mappazzo](https://www.mappazzo.com)
