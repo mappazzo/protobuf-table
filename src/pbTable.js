@@ -1,9 +1,8 @@
 // Mappazzo (c) 2017
 // protocol buffer implimentation for variable format structured tables
 
-import pbuf from 'protobufjs'
-import _ from 'lodash'
-
+//* global pbuf */
+var pbuf = require('protobufjs')
 var Root = pbuf.Root
 var Reader = pbuf.Reader
 var Writer = pbuf.Writer
@@ -13,6 +12,43 @@ var types = {
   'uint': 'int32',
   'int': 'sint32',
   'float': 'float'
+}
+
+// Header protocol
+var headProto = {
+  TableHeader: {
+    nested: {
+      Transform: {
+        fields: {
+          offset: { id: 1, rule: 'optional', type: 'int32' },
+          multip: { id: 2, rule: 'optional', type: 'int32' },
+          decimals: { id: 3, rule: 'optional', type: 'int32' },
+          sequence: { id: 4, rule: 'optional', type: 'bool' }
+        }
+      },
+      Field: {
+        fields: {
+          name: { id: 1, rule: 'required', type: 'string' },
+          type: { id: 2, rule: 'required', type: 'string' },
+          transform: { id: 3, rule: 'optional', type: 'Transform' }
+        }
+      },
+      Meta: {
+        fields: {
+          name: { id: 1, rule: 'optional', type: 'string' },
+          owner: { id: 2, rule: 'optional', type: 'string' },
+          link: { id: 3, rule: 'optional', type: 'string' },
+          comment: { id: 4, rule: 'optional', type: 'string' }
+        }
+      },
+      Header: {
+        fields: {
+          header: { id: 1, rule: 'repeated', type: 'Field' },
+          meta: { id: 2, rule: 'optional', type: 'Meta' }
+        }
+      }
+    }
+  }
 }
 
 // Protocol buffer interface
@@ -70,27 +106,55 @@ var encodeData = function (protocol, obj, writer, cb) {
   }
 }
 var decodeHeader = function (reader, cb) {
-  pbuf.load('static/pbTableHeader.proto', function (err, root) {
-    if (err) return cb(err)
-    var headMsg = root.lookupType('pbTableHeader.tableHead')
-    var head = headMsg.decodeDelimited(reader)
-    cb(null, head)
-  })
+  var root = new Root()
+  root.addJSON(headProto)
+  var headMsg = root.lookupType('TableHeader.Header')
+  var head = headMsg.decodeDelimited(reader)
+  cb(null, head)
 }
 var encodeHeader = function (obj, writer, cb) {
-  pbuf.load('static/pbTableHeader.proto', function (err, root) {
-    if (err) return cb(err)
-    var headMsg = root.lookupType('pbTableHeader.tableHead')
-    var verifyError = headMsg.verify(obj)
-    if (verifyError) {
-      var vErr = new Error(verifyError)
-      cb(vErr)
+  var root = new Root()
+  root.addJSON(headProto)
+  var headMsg = root.lookupType('TableHeader.Header')
+  var verifyError = headMsg.verify(obj)
+  if (verifyError) {
+    var vErr = new Error(verifyError)
+    cb(vErr)
+  } else {
+    if (!writer) writer = new Writer()
+    headMsg.encodeDelimited(obj, writer)
+    cb(null, writer)
+  }
+}
+
+// Transform data
+var transformInteger = {
+  parse: function (value, lastval, transform) {
+    if (!transform.offset) transform.offset = 0
+    if (!transform.multip) transform.multip = 1
+    if (!transform.decimals) transform.decimals = 0
+    if (transform.sequence && lastval) {
+      value -= lastval
     } else {
-      if (!writer) writer = new Writer()
-      headMsg.encodeDelimited(obj, writer)
-      cb(null, writer)
+      value -= transform.offset
     }
-  })
+    var storedValue = value * transform.multip
+    storedValue = storedValue * Math.pow(10, transform.decimals)
+    return parseInt(storedValue)
+  },
+  recover: function (storedValue, lastval, transform) {
+    if (!transform.offset) transform.offset = 0
+    if (!transform.multip) transform.multip = 1
+    if (!transform.decimals) transform.decimals = 0
+    var value = storedValue * Math.pow(10, -transform.decimals)
+    value = value / transform.multip
+    if (transform.sequence && lastval) {
+      value += lastval
+    } else {
+      value += transform.offset
+    }
+    return value
+  }
 }
 
 // Verbose data format
@@ -161,18 +225,22 @@ var encodeTable = function (obj, cb) {
     if (err) return cb(err)
     protocolFromHeader(obj, function (err, protocol) {
       if (err) return cb(err)
-      var count = 0
       obj.data.forEach(function (data, row) {
         var dataObj = { data: [{}] }
-        obj.header.forEach(function (header, col) {
-          dataObj.data[0][header.name] = data[col]
+        obj.header.forEach(function (head, col) {
+          var storeVal = data[col]
+          if (head.transform &&
+             (head.type === 'int' || head.type === 'uint')) {
+            var lastVal = null
+            if (row >= 1) lastVal = obj.data[row - 1][col]
+            storeVal = transformInteger.parse(storeVal, lastVal, head.transform)
+          }
+          dataObj.data[0][head.name] = storeVal
         })
         encodeData(protocol, dataObj, writer, function (err, writer) {
           if (err) return cb(err)
-          count++
         })
       })
-      console.log('encoded rows: ', count)
       var encoded = writer.finish()
       cb(null, encoded)
     })
@@ -190,17 +258,19 @@ var decodeTable = function (buff, cb) {
           header: JSON.parse(JSON.stringify(headObj.header)),
           data: []
         }
-        var headInfo = {}
-        headObj.header.forEach(function (head, ind) {
-          headInfo[head.name] = {}
-          headInfo[head.name].ind = ind
-          headInfo[head.name].transform = head.transform
-        })
         dataObj.data.forEach(function (obj, row) {
           result.data[row] = []
-          _.forEach(obj, function (value, key, obj) {
-            var col = headInfo[key].ind
-            result.data[row][col] = value
+          headObj.header.forEach(function (head, col) {
+            if (obj[head.name]) {
+              var value = obj[head.name]
+              if (head.transform &&
+                 (head.type === 'int' || head.type === 'uint')) {
+                var lastVal = null
+                if (row >= 1) lastVal = result.data[row - 1][col]
+                value = transformInteger.recover(value, lastVal, head.transform)
+              }
+              result.data[row][col] = value
+            }
           })
         })
         cb(null, result)
@@ -233,7 +303,7 @@ var addTable = function (buff, data, cb) {
   })
 }
 
-export default {
+module.exports = {
   encodeVerbose,
   decodeVerbose,
   addVerbose,

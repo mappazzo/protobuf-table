@@ -4,7 +4,10 @@
   "description": "A dynamic protobuf implementation for structured table data",
   "main": "src/index.js",
   "scripts": {
-    "test": "test/pbTable.js"
+    "build-dev": "babel src/pbTable.js -o dist/pbTable.js",
+    "build-min": "cross-env BABEL_ENV=production babel src/pbTable.js -o dist/pbTable-min.js",
+    "build": "npm run build-dev && npm run build-min",
+    "test": "npm run build && node test/index.js"
   },
   "repository": {
     "type": "git",
@@ -28,14 +31,15 @@
   },
   "homepage": "https://github.com/mappazzo/protobuf-table#readme",
   "dependencies": {
-    "lodash": "^4.17.4",
+    "babel-minify": "^0.2.0",
+    "babili": "^0.1.4",
     "protobufjs": "^6.8.0"
   },
   "devDependencies": {
     "autoprefixer": "^6",
-    "babel-brunch": "^6",
+    "babel-cli": "^6.26.0",
     "babel-preset-env": "^1.6.0",
-    "brunch": "^2",
-    "uglify-js-brunch": "^2"
+    "cross-env": "^5.0.5",
+    "eslint": "^4.5.0"
   }
 }
