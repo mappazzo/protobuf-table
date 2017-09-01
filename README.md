@@ -7,6 +7,9 @@ Tests and documentation under development. Stay tuned
 ## Purpose
 
 ## License
+
+This software is 'Beerware'
+
  ----------------------------------------------------------------------------
  "THE BEER-WARE LICENSE" (Revision 42):
  [Mappazzo](mailto:info@mappazzo.com) wrote this file. As long as you retain this notice you
@@ -51,22 +54,26 @@ You can encode this data as follows:
 
 ### Installation
 
-For packaging with NPM and ES6
+## For packaging with NPM and ES6
 
     npm install --save protobuf-table
 
-    and then:
+and then:
 
     include pbTable from 'protobuf-table'
 
-Stand alone
+## Stand alone
 
     var pbTable = require('./dist/pbTable-min.js')
 
-### Testing
+### Building and Testing
+
+Build
+
+    npm run build
+
+Build and test
 
     npm run test
-
-### Build
 
 [software by mappazzo](https://www.mappazzo.com)
