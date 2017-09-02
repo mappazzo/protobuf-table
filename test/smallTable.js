@@ -12,10 +12,10 @@ module.exports = {
     { 'name': 'reading', 'type': 'int' }
   ],
   'meta': {
-    'filename': '',
-    'owner': '',
-    'link': '',
-    'comment': ''
+    'filename': 'basicTestTable',
+    'owner': 'mappazzo',
+    'link': 'www.mappazzo.com',
+    'comment': 'basic table testing'
   },
   'data': [
     ['east street', 34324, -42.559355, 172.60347, -889],

@@ -40,7 +40,7 @@ var headProto = {
       },
       Meta: {
         fields: {
-          name: { id: 1, rule: 'optional', type: 'string' },
+          filename: { id: 1, rule: 'optional', type: 'string' },
           owner: { id: 2, rule: 'optional', type: 'string' },
           link: { id: 3, rule: 'optional', type: 'string' },
           comment: { id: 4, rule: 'optional', type: 'string' }
@@ -188,10 +188,8 @@ var decodeVerbose = function (buff, cb) {
       if (err) return cb(err)
       decodeData(protocol, reader, function (err, dataObj) {
         if (err) return cb(err)
-        var result = {
-          header: headObj.header,
-          data: dataObj.data
-        }
+        var result = JSON.parse(JSON.stringify(headObj))
+        result.data = dataObj.data
         cb(null, JSON.parse(JSON.stringify(result)))
       })
     })
@@ -259,10 +257,8 @@ var decodeTable = function (buff, cb) {
       if (err) return cb(err)
       decodeData(protocol, reader, function (err, dataObj) {
         if (err) return cb(err)
-        var result = {
-          header: JSON.parse(JSON.stringify(headObj.header)),
-          data: []
-        }
+        var result = JSON.parse(JSON.stringify(headObj))
+        result.data = []
         dataObj.data.forEach(function (obj, row) {
           result.data[row] = []
           headObj.header.forEach(function (head, col) {

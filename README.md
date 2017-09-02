@@ -25,6 +25,12 @@ You can also include metadata information in a 'meta' object.
 Example 'Table' structure (with data as an Array):
 
     var table = {
+      meta: {
+        filename: 'exampleTable',
+        owner: 'mappazzo',
+        link: 'www.mappazzo.com',
+        comment: 'basic table example'
+      },
       header: [
         { name: 'location', type: 'string' },
         { name: 'total', type: 'uint' },
@@ -32,12 +38,6 @@ Example 'Table' structure (with data as an Array):
         { name: 'longitude', type: 'float' },
         { name: 'reading', type: 'int' }
       ],
-      meta: {
-        filename: 'exampleTable',
-        owner: 'mappazzo',
-        link: 'www.mappazzo.com',
-        comment: 'basic table example'
-      },
       data: [
         ['east street', 34324, -42.559355, 172.60347, -889],
         ['work', 7344, -41.546799, 172.50742, 4],
