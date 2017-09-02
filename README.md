@@ -54,7 +54,7 @@ You can encode this data as follows:
 
 And decode the resulting buffer as follows:
 
-    pbTable.encodeTable(buffer, function (err, table) {
+    pbTable.decodeTable(buffer, function (err, table) {
         if(err) return console.log(err)
         console.log('success, restored data:', table)
     })
