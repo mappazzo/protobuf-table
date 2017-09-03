@@ -52,12 +52,16 @@ You can encode this data as follows:
         console.log('success, buffer is:' + buffer.length + 'bytes')
     })
 
+    or..  pbTable.encode((table, function (err, buffer) { } )
+
 And decode the resulting buffer as follows:
 
     pbTable.decodeTable(buffer, function (err, table) {
         if(err) return console.log(err)
         console.log('success, restored data:', table)
     })
+
+    or...  pbTable.decode((table, function (err, buffer) { } )
 
 Each 'row' of data can also be a verbose object
 
@@ -71,17 +75,23 @@ If data is stored as verbose objects then we use:
 
     pbTable.encodeVerbose(buffer, callback (err, buffer) { } )
 
-and
-
-    pbTable.decodeVerbose(buffer, callback (err, buffer) { } )
+    and...   pbTable.decodeVerbose(buffer, callback (err, buffer) { } )
 
 We can also add additional data to an existing buffer
 
+    pbTable.add(buffer, data, callback (err, buffer) { } )
+    ...
+    pbTable.addTable(buffer, data, callback(err, buffer) { } )
     pbTable.addVerbose(buffer, data, callback (err, buffer) { } )
 
-and
+## Data extraction
 
-    pbTable.addTable(buffer, data, callback(err, buffer) { } )
+We can get an individual row of our data directly from the buffer. We provide the buffer and a 'request'. The request represents the 'table row numbers' that you want returned and can be a single an integer or an Array of integers.
+
+    pbTable.get(buffer, request, callback(err, data) { } )
+    ...
+    pbTable.getTable(buffer, request, callback(err, data) { } )
+    pbTable.getVerbose(buffer, request, callback(err, data) { } )
 
 ## Compressing data
 

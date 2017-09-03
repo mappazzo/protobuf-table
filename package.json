@@ -1,6 +1,6 @@
 {
   "name": "protobuf-table",
-  "version": "1.0.4",
+  "version": "1.1.0",
   "description": "A dynamic protobuf implementation for structured table data",
   "main": "src/pbTable.js",
   "scripts": {
