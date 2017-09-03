@@ -11,16 +11,15 @@ pbTable.encodeTable(compressTable, function (err, pbuff) {
   pbTable.decodeVerbose(pbuff, function (err, obj) {
     if (err) return console.log(err)
     console.log('decodeVerbose... success')
-    // console.log('smallTableVerbose', obj)
+    // console.log('decodedVerbose', obj)
     pbTable.encodeVerbose(obj, function (err, pbuff) {
       if (err) return console.log(err)
       console.log('encodeVerbose, success')
-      // console.log('pbuff length', pbuff.length)
     })
   })
   pbTable.decodeTable(pbuff, function (err, obj) {
     if (err) return console.log(err)
     console.log('decodeTable... success')
-    // console.log('smallTable', obj)
+    // console.log('decodedTable', obj)
   })
 })

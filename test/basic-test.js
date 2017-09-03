@@ -23,6 +23,21 @@ pbTable.encodeTable(smlTable, function (err, pbuff) {
     console.log('decodeTable... success')
     // console.log('smallTable', obj)
   })
+  pbTable.getVerbose(pbuff, 1, function (err, data) {
+    if (err) return console.log(err)
+    console.log('getVerbose... success')
+    console.log('row 1', data)
+  })
+  pbTable.getTable(pbuff, [1, 4], function (err, data) {
+    if (err) return console.log(err)
+    console.log('getTable... success')
+    console.log('row 1, 4: ', data)
+  })
+  pbTable.getIndex(pbuff, function (err, index) {
+    if (err) return console.log(err)
+    console.log('getIndex... success')
+    console.log('index', JSON.stringify(index))
+  })
 })
 
 console.log('.')

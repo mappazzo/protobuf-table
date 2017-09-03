@@ -68,7 +68,7 @@ var types = {
         Data: {
           fields: {
             data: {
-              id: 1,
+              id: 3,
               rule: 'repeated',
               type: 'Row'
             }
@@ -92,19 +92,20 @@ var types = {
   cb(null, root);
 };
 var decodeData = function decodeData(protocol, reader, cb) {
-  var dataArray = protocol.lookupType('DataArray.Data');
-  var data = dataArray.decode(reader);
+  var dataProtocol = protocol.lookupType('DataArray.Data');
+  var data = dataProtocol.decode(reader);
   cb(null, data);
 };
 var encodeData = function encodeData(protocol, obj, writer, cb) {
-  var dataArray = protocol.lookupType('DataArray.Data');
-  var verifyError = dataArray.verify(obj);
+  var dataProtocol = protocol.lookupType('DataArray.Data');
+  var verifyError = dataProtocol.verify(obj);
   if (verifyError) {
+    console.log('error encoding: ', obj);
     var vErr = new Error(verifyError);
     cb(vErr);
   } else {
     if (!writer) writer = new Writer();
-    dataArray.encode(obj, writer);
+    dataProtocol.encode(obj, writer);
     cb(null, writer);
   }
 };
@@ -129,10 +130,78 @@ var encodeHeader = function encodeHeader(obj, writer, cb) {
     cb(null, writer);
   }
 };
+var indexData = function indexData(reader, cb) {
+  var index = [];
+  var bInd = reader.pos;
+  while (bInd < reader.len) {
+    var t = reader.uint32();
+    var type = t & 7;
+    var tag = t >>> 3;
+    if (type === 2 || tag === 3) {
+      // all data entries are type 2 'embeded message' and tag 3 'fixed by protocol'
+      index.push(bInd);
+      var len = reader.uint32();
+      bInd = reader.pos + len;
+      if (bInd < reader.len) reader.skip(len);
+    } else {
+      var err = new Error('getIndex() Unexpected message type');
+      return cb(err);
+    }
+  }
+  cb(null, index);
+};
+var decodeRow = function decodeRow(protocol, reader, request, cb) {
+  var bInd = reader.pos;
+  var ind = 0;
+  var err = null;
+  var data;
+  if (Array.isArray(request)) data = [];
+  while (bInd < reader.len) {
+    var t = reader.uint32();
+    var type = t & 7;
+    var tag = t >>> 3;
+    if (type === 2 || tag === 3) {
+      // all data entries are type 2 'embeded message' and tag 3 'fixed by protocol'
+      if (Array.isArray(request)) {
+        var found = false;
+        request.forEach(function (val, ri) {
+          if (ind === val) {
+            found = true;
+            var rowBytes = reader.bytes();
+            var rowProtocol = protocol.lookupType('DataArray.Row');
+            data[ri] = rowProtocol.decode(rowBytes);
+            bInd = reader.pos;
+          }
+        });
+      } else if (ind === request) {
+        var rowBytes = reader.bytes();
+        var rowProtocol = protocol.lookupType('DataArray.Row');
+        data = rowProtocol.decode(rowBytes);
+        return cb(null, data);
+      }
+      if (!found) {
+        var len = reader.uint32();
+        bInd = reader.pos + len;
+        if (bInd < reader.len) reader.skip(len);
+      }
+      ind++;
+    } else {
+      err = new Error('getRow() Unexpected message type');
+      return cb(err);
+    }
+  }
+  if (!data) {
+    err = new Error('getRow() buffer only contains ' + ind + ' rows');
+    return cb(err);
+  } else {
+    cb(null, data);
+  }
+};
 
 // Transform data
 var transformInteger = {
   parse: function parse(value, lastval, transform) {
+    if (!value) value = 0;
     if (!transform.offset) transform.offset = 0;
     if (!transform.multip) transform.multip = 1;
     if (!transform.decimals) transform.decimals = 0;
@@ -146,6 +215,7 @@ var transformInteger = {
     return parseInt(storedValue);
   },
   recover: function recover(storedValue, lastval, transform) {
+    if (!storedValue) storedValue = 0;
     if (!transform.offset) transform.offset = 0;
     if (!transform.multip) transform.multip = 1;
     if (!transform.decimals) transform.decimals = 0;
@@ -169,7 +239,20 @@ var transformInteger = {
     if (err) return cb(err);
     protocolFromHeader(obj, function (err, protocol) {
       if (err) return cb(err);
-      encodeData(protocol, obj, writer, function (err, writer) {
+      var enc = JSON.parse(JSON.stringify(obj));
+      obj.header.forEach(function (head, col) {
+        if (head.transform && (head.type === 'int' || head.type === 'uint')) {
+          enc.data.forEach(function (dataObj, row) {
+            var rawValue = dataObj[head.name];
+            var lastVal = null;
+            if (row >= 1) lastVal = obj.data[row - 1][head.name];
+            var storeVal = transformInteger.parse(rawValue, lastVal, head.transform);
+            enc.data[row][head.name] = storeVal;
+          });
+        }
+      });
+      // console.log('encodeVerbose obj', enc)
+      encodeData(protocol, enc, writer, function (err, writer) {
         if (err) return cb(err);
         var encoded = writer.finish();
         cb(null, encoded);
@@ -186,8 +269,70 @@ var decodeVerbose = function decodeVerbose(buff, cb) {
       decodeData(protocol, reader, function (err, dataObj) {
         if (err) return cb(err);
         var result = JSON.parse(JSON.stringify(headObj));
-        result.data = dataObj.data;
+        result.data = [];
+        dataObj.data.forEach(function (obj, row) {
+          result.data[row] = {};
+          headObj.header.forEach(function (head, col) {
+            var value = obj[head.name];
+            if (head.transform && (head.type === 'int' || head.type === 'uint')) {
+              var lastVal = null;
+              if (row >= 1) lastVal = result.data[row - 1][head.name];
+              value = transformInteger.recover(value, lastVal, head.transform);
+            }
+            result.data[row][head.name] = value;
+          });
+        });
         cb(null, JSON.parse(JSON.stringify(result)));
+      });
+    });
+  });
+};
+var getVerbose = function getVerbose(buff, request, cb) {
+  var reader = new Reader(buff);
+  decodeHeader(reader, function (err, headObj) {
+    if (err) return cb(err);
+    protocolFromHeader(headObj, function (err, protocol) {
+      if (err) return cb(err);
+      decodeRow(protocol, reader, request, function (err, dataObj) {
+        if (err) return cb(err);
+        var result;
+        if (Array.isArray(dataObj)) {
+          result = [];
+          dataObj.forEach(function (obj, row) {
+            result[row] = {};
+            headObj.header.forEach(function (head, col) {
+              if (obj[head.name]) {
+                var value = obj[head.name];
+                if (head.transform && (head.type === 'int' || head.type === 'uint')) {
+                  var lastVal = null;
+                  if (head.transform.sequence) {
+                    err = new Error('getVerbose(): cannot extract specific entries from sequenced data');
+                    return cb(err);
+                  }
+                  value = transformInteger.recover(value, lastVal, head.transform);
+                }
+                result[row][head.name] = value;
+              }
+            });
+          });
+        } else {
+          result = {};
+          headObj.header.forEach(function (head, col) {
+            if (dataObj[head.name]) {
+              var value = dataObj[head.name];
+              if (head.transform && (head.type === 'int' || head.type === 'uint')) {
+                var lastVal = null;
+                if (head.transform.sequence) {
+                  err = new Error('getVerbose(): cannot extract specific entries from sequenced data');
+                  return cb(err);
+                }
+                value = transformInteger.recover(value, lastVal, head.transform);
+              }
+              result[head.name] = value;
+            }
+          });
+        }
+        return cb(null, result);
       });
     });
   });
@@ -258,18 +403,65 @@ var decodeTable = function decodeTable(buff, cb) {
         dataObj.data.forEach(function (obj, row) {
           result.data[row] = [];
           headObj.header.forEach(function (head, col) {
-            if (obj[head.name]) {
-              var value = obj[head.name];
-              if (head.transform && (head.type === 'int' || head.type === 'uint')) {
-                var lastVal = null;
-                if (row >= 1) lastVal = result.data[row - 1][col];
-                value = transformInteger.recover(value, lastVal, head.transform);
-              }
-              result.data[row][col] = value;
+            var value = obj[head.name];
+            if (head.transform && (head.type === 'int' || head.type === 'uint')) {
+              if (!value) value = 0;
+              var lastVal = null;
+              if (row >= 1) lastVal = result.data[row - 1][col];
+              value = transformInteger.recover(value, lastVal, head.transform);
             }
+            result.data[row][col] = value;
           });
         });
         cb(null, result);
+      });
+    });
+  });
+};
+var getTable = function getTable(buff, request, cb) {
+  var reader = new Reader(buff);
+  decodeHeader(reader, function (err, headObj) {
+    if (err) return cb(err);
+    protocolFromHeader(headObj, function (err, protocol) {
+      if (err) return cb(err);
+      decodeRow(protocol, reader, request, function (err, dataObj) {
+        if (err) return cb(err);
+        var result = [];
+        if (Array.isArray(dataObj)) {
+          dataObj.forEach(function (obj, row) {
+            result[row] = [];
+            headObj.header.forEach(function (head, col) {
+              if (obj[head.name]) {
+                var value = obj[head.name];
+                if (head.transform && (head.type === 'int' || head.type === 'uint')) {
+                  var lastVal = null;
+                  if (head.transform.sequence) {
+                    err = new Error('getTable(): cannot extract specific entries from sequenced data');
+                    return cb(err);
+                  }
+                  value = transformInteger.recover(value, lastVal, head.transform);
+                }
+                result[row][col] = value;
+              }
+            });
+          });
+        } else {
+          headObj.header.forEach(function (head, col) {
+            if (dataObj[head.name]) {
+              var value = dataObj[head.name];
+              if (head.transform && (head.type === 'int' || head.type === 'uint')) {
+                var lastVal = null;
+                if (head.transform.sequence) {
+                  err = new Error('getTable(): cannot extract specific entries from sequenced data');
+                  return cb(err);
+                }
+                value = transformInteger.recover(value, lastVal, head.transform);
+              }
+              result[col] = value;
+            }
+          });
+        }
+        return cb(null, result);
       });
     });
   });
@@ -299,12 +491,35 @@ var addTable = function addTable(buff, data, cb) {
   });
 };
 
+// Indexing and lookup
+var getIndex = function getIndex(buff, cb) {
+  var reader = new Reader(buff);
+  var headLen = reader.uint32();
+  var err = null;
+  if (reader.pos + headLen < reader.len) {
+    reader.skip(headLen);
+    indexData(reader, function (err, index) {
+      if (err) return err;
+      return cb(null, index);
+    });
+  } else {
+    err = new Error('getIndex(): invalid buffer');
+    return cb(err);
+  }
+};
+
 module.exports = {
   encodeVerbose: encodeVerbose,
   decodeVerbose: decodeVerbose,
+  getVerbose: getVerbose,
   addVerbose: addVerbose,
   encodeTable: encodeTable,
   decodeTable: decodeTable,
+  getTable: getTable,
   addTable: addTable,
-  types: types
+  encode: encodeTable,
+  decode: decodeTable,
+  get: getTable,
+  add: addTable,
+  getIndex: getIndex
 };
