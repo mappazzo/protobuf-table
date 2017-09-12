@@ -96,7 +96,7 @@ var protocolFromHeader = function (obj, cb) {
     if (typeof type === 'undefined') err = new Error('Invalid type: ' + field.type)
     fields[field.name] = {
       id: index + 1,
-      type,
+      type: type,
       rule: field.rule || 'optional'
     }
   })
