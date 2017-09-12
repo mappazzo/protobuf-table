@@ -1,4 +1,4 @@
-var pbTable = require('../dist/pbTable.js')
+var pbTable = require('../src/pbTable.js')
 var smlTable = require('./smallTable.js')
 console.log('.')
 console.log('BASIC TEST')

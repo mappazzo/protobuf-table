@@ -1,9 +1,10 @@
+// protobuf-table
+// implimentation of googles protocol buffer for variable format structured tables
+
 // "THE BEER-WARE LICENSE" (Revision 42):
 // Mappazzo (info@mappazzo.com) wrote this file. As long as you retain this notice you
 // can do whatever you want with this stuff. If we meet some day, and you think
 // this stuff is worth it, you can buy me a beer in return. Cheers, Kelly Norris
-
-// Protocol buffer implimentation for variable format structured tables
 
 //* global pbuf */
 var pbuf = require('protobufjs')
@@ -16,12 +17,13 @@ var types = {
   'string': 'string',
   'uint': 'int32',
   'int': 'sint32',
-  'float': 'float'
+  'float': 'float',
+  'bool': 'bool'
 }
 
 // Header protocol
 var headProto = {
-  TableHeader: {
+  FileHead: {
     nested: {
       Transform: {
         fields: {
@@ -38,6 +40,16 @@ var headProto = {
           transform: { id: 3, rule: 'optional', type: 'Transform' }
         }
       },
+      CustomKey: {
+        fields: {
+          key: { id: 1, rule: 'required', type: 'string' },
+          str: { id: 2, rule: 'optional', type: 'string' },
+          int: { id: 3, rule: 'optional', type: 'sint32' },
+          uint: { id: 4, rule: 'optional', type: 'int32' },
+          flt: { id: 5, rule: 'optional', type: 'float' },
+          obj: { id: 6, rule: 'optional', type: 'bytes' }
+        }
+      },
       Meta: {
         fields: {
           filename: { id: 1, rule: 'optional', type: 'string' },
@@ -49,7 +61,8 @@ var headProto = {
       Header: {
         fields: {
           header: { id: 1, rule: 'repeated', type: 'Field' },
-          meta: { id: 2, rule: 'optional', type: 'Meta' }
+          meta: { id: 2, rule: 'optional', type: 'Meta' },
+          _cKey: { id: 3, rule: 'repeated', type: 'CustomKey' }
         }
       }
     }
@@ -68,11 +81,8 @@ var protocolFromHeader = function (obj, cb) {
         },
         Data: {
           fields: {
-            data: {
-              id: 3,
-              rule: 'repeated',
-              type: 'Row'
-            }
+            data: { id: 3, rule: 'repeated', type: 'Row' },
+            _cKey: { id: 4, rule: 'repeated', type: 'CustomKey' }
           }
         }
       }
@@ -80,18 +90,25 @@ var protocolFromHeader = function (obj, cb) {
     // }
   }
   var fields = {}
+  var err = null
   obj.header.forEach(function (field, index) {
     var type = types[field.type]
+    if (typeof type === 'undefined') err = new Error('Invalid type: ' + field.type)
     fields[field.name] = {
       id: index + 1,
       type,
       rule: field.rule || 'optional'
     }
   })
-  dataJSON.DataArray.nested.Row.fields = fields
-  var root = new Root()
-  root.addJSON(dataJSON)
-  cb(null, root)
+  if (err) {
+    cb(err)
+  } else {
+    dataJSON.DataArray.nested.Row.fields = fields
+    dataJSON.DataArray.nested.CustomKey = headProto.FileHead.nested.CustomKey
+    var root = new Root()
+    root.addJSON(dataJSON)
+    cb(null, root)
+  }
 }
 var decodeData = function (protocol, reader, cb) {
   var dataProtocol = protocol.lookupType('DataArray.Data')
@@ -102,8 +119,9 @@ var encodeData = function (protocol, obj, writer, cb) {
   var dataProtocol = protocol.lookupType('DataArray.Data')
   var verifyError = dataProtocol.verify(obj)
   if (verifyError) {
-    console.log('error encoding: ', obj)
+    // console.log('error encoding: ', obj)
     var vErr = new Error(verifyError)
+    console.log(vErr.message)
     cb(vErr)
   } else {
     if (!writer) writer = new Writer()
@@ -111,17 +129,44 @@ var encodeData = function (protocol, obj, writer, cb) {
     cb(null, writer)
   }
 }
+var decodeCustomKeys = function (obj) {
+  if (obj._cKey) {
+    obj._cKey.forEach(function (customObj) {
+      if (obj[customObj.key]) {
+        if (!Array.isArray(obj[customObj.key])) {
+          var existVal = obj[customObj.key]
+          obj[customObj.key] = []
+          obj[customObj.key].push(existVal)
+        }
+        if (customObj.str) obj[customObj.key].push(customObj.str)
+        if (customObj.int) obj[customObj.key].push(customObj.int)
+        if (customObj.uint) obj[customObj.key].push(customObj.uint)
+        if (customObj.flt) obj[customObj.key].push(customObj.flt)
+        if (customObj.obj) obj[customObj.key].push(customObj.obj)
+      } else {
+        if (customObj.str) obj[customObj.key] = customObj.str
+        if (customObj.int) obj[customObj.key] = customObj.int
+        if (customObj.uint) obj[customObj.key] = customObj.uint
+        if (customObj.flt) obj[customObj.key] = customObj.flt
+        if (customObj.obj) obj[customObj.key] = customObj.obj
+      }
+    })
+    delete obj._cKey
+  }
+  return obj
+}
 var decodeHeader = function (reader, cb) {
   var root = new Root()
   root.addJSON(headProto)
-  var headMsg = root.lookupType('TableHeader.Header')
+  var headMsg = root.lookupType('FileHead.Header')
   var head = headMsg.decodeDelimited(reader)
-  cb(null, head)
+  var result = decodeCustomKeys(head)
+  cb(null, result)
 }
 var encodeHeader = function (obj, writer, cb) {
   var root = new Root()
   root.addJSON(headProto)
-  var headMsg = root.lookupType('TableHeader.Header')
+  var headMsg = root.lookupType('FileHead.Header')
   var verifyError = headMsg.verify(obj)
   if (verifyError) {
     var vErr = new Error(verifyError)
@@ -242,18 +287,30 @@ var encodeVerbose = function (obj, cb) {
       if (err) return cb(err)
       var enc = JSON.parse(JSON.stringify(obj))
       obj.header.forEach(function (head, col) {
-        if (head.transform &&
-           (head.type === 'int' || head.type === 'uint')) {
+        if (head.type === 'int' || head.type === 'uint') {
+          if (head.transform) {
+            enc.data.forEach(function (dataObj, row) {
+              var rawValue = dataObj[head.name]
+              var lastVal = null
+              if (row >= 1) lastVal = obj.data[row - 1][head.name]
+              var storeVal = transformInteger.parse(rawValue, lastVal, head.transform)
+              enc.data[row][head.name] = storeVal
+            })
+          } else {
+            enc.data.forEach(function (dataObj, row) {
+              enc.data[row][head.name] = parseInt(dataObj[head.name])
+            })
+          }
+        } else if (head.type === 'string') {
           enc.data.forEach(function (dataObj, row) {
-            var rawValue = dataObj[head.name]
-            var lastVal = null
-            if (row >= 1) lastVal = obj.data[row - 1][head.name]
-            var storeVal = transformInteger.parse(rawValue, lastVal, head.transform)
-            enc.data[row][head.name] = storeVal
+            enc.data[row][head.name] = String(dataObj[head.name])
+          })
+        } else if (head.type === 'bool') {
+          enc.data.forEach(function (dataObj, row) {
+            enc.data[row][head.name] = Boolean(dataObj[head.name])
           })
         }
       })
-      // console.log('encodeVerbose obj', enc)
       encodeData(protocol, enc, writer, function (err, writer) {
         if (err) return cb(err)
         var encoded = writer.finish()
@@ -375,24 +432,32 @@ var encodeTable = function (obj, cb) {
     if (err) return cb(err)
     protocolFromHeader(obj, function (err, protocol) {
       if (err) return cb(err)
+      var error = null
       obj.data.forEach(function (data, row) {
         var dataObj = { data: [{}] }
         obj.header.forEach(function (head, col) {
           var storeVal = data[col]
-          if (head.transform &&
-             (head.type === 'int' || head.type === 'uint')) {
-            var lastVal = null
-            if (row >= 1) lastVal = obj.data[row - 1][col]
-            storeVal = transformInteger.parse(storeVal, lastVal, head.transform)
+          if (head.type === 'int' || head.type === 'uint') {
+            if (head.transform) {
+              var lastVal = null
+              if (row >= 1) lastVal = obj.data[row - 1][col]
+              storeVal = transformInteger.parse(storeVal, lastVal, head.transform)
+            } else {
+              storeVal = parseInt(storeVal)
+            }
+          } else if (head.type === 'string') {
+            storeVal = String(storeVal)
+          } else if (head.type === 'bool') {
+            storeVal = Boolean(storeVal)
           }
           dataObj.data[0][head.name] = storeVal
         })
         encodeData(protocol, dataObj, writer, function (err, writer) {
-          if (err) return cb(err)
+          if (err) error = err
         })
       })
       var encoded = writer.finish()
-      cb(null, encoded)
+      cb(error, encoded)
     })
   })
 }

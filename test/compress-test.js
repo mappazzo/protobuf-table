@@ -1,4 +1,4 @@
-var pbTable = require('../dist/pbTable.js')
+var pbTable = require('../src/pbTable.js')
 var compressTable = require('./compressTable.js')
 console.log('.')
 console.log('COMPRESS TEST')
