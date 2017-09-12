@@ -405,7 +405,7 @@ var addVerbose = function (buff, data, cb) {
     if (err) return cb(err)
     protocolFromHeader(headObj, function (err, protocol) {
       if (err) return cb(err)
-      encodeData(protocol, { data }, null, function (err, writer) {
+      encodeData(protocol, { data: data }, null, function (err, writer) {
         if (err) return cb(err)
         var addBuff = writer.finish()
         var totalLength = buff.length + addBuff.length

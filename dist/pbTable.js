@@ -310,6 +310,7 @@ var transformInteger = {
           });
         }
       });
+      // console.log('encodeVerbose obj', enc)
       encodeData(protocol, enc, writer, function (err, writer) {
         if (err) return cb(err);
         var encoded = writer.finish();
