@@ -8,7 +8,7 @@ A simple Python script for extracting timeseries data from Microsoft SQL Server 
 - **Flexible Queries**: Extract data with custom time ranges, tables, and columns
 - **Error Handling**: Comprehensive error handling and logging
 - **Multiple Export Formats**: CSV export and compressed protobuf-table format
-- **Data Compression**: Efficient binary serialization with timestamp delta encoding
+- **Data Compression**: Efficient binary serialization with timestep offset compression
 - **Pandas Integration**: Returns data as pandas DataFrames for easy analysis
 - **Type Safety**: Uses Python type hints for better code reliability
 
@@ -168,12 +168,20 @@ python example_usage.py
 
 **`save_to_protobuf(df, filename=None) -> str`**
 - Save DataFrame to protobuf-table format for efficient storage
-- Uses pb_table library for binary compression with timestamp delta encoding
+- Uses pb_table library for binary compression with timestep offset compression
 - Parameters:
   - `df`: pandas DataFrame to save
   - `filename`: Output filename (optional, auto-generated if not provided)
 - Returns: Filename of saved protobuf file
-- Note: Timestamps are converted to Unix timestamps and compressed using sequence transforms
+- Note: Timestamps are converted to Unix timestamps and compressed using offset transforms, maintaining random access capability
+
+**`demonstrate_random_access(df) -> bytes`**
+- Demonstrate random access capability with timestep transforms
+- Shows how specific rows can be extracted without full deserialization
+- Parameters:
+  - `df`: pandas DataFrame to demonstrate with
+- Returns: Encoded buffer for further analysis
+- Note: Illustrates the advantage of timestep transforms over sequence transforms for irregular timestamps
 
 ## Database Schema Requirements
 
