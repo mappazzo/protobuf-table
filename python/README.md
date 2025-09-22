@@ -1,21 +1,19 @@
 # protobuf-table Python Implementation
 
-A Python library that provides dynamic Protocol Buffer implementation specifically designed for structured table data compression and serialization. This is the Python equivalent of the JavaScript protobuf-table library.
+Python implementation of the protobuf-table library for structured table data compression and serialization.
 
 ## Features
 
-- **Dynamic Schema Generation**: Create protobuf schemas at runtime based on table headers
-- **Multiple Data Formats**: Support both array-based and object-based data representations
-- **Compression Features**: Implement data transforms (offset, multiplication, decimals, sequencing) for optimal storage
 - **JavaScript API Compatibility**: Provides equivalent functionality to the JavaScript version
-- **Callback Support**: Optional callback-style API for JavaScript compatibility
+- **Callback Support**: Optional callback-style API for JavaScript compatibility  
 - **Type Safety**: Uses Python type hints for better code reliability
+- **Cross-Language Data Compatibility**: Data encoded in Python can be decoded in JavaScript and vice versa
 
 ## Installation
 
 1. **Install Python dependencies:**
    ```bash
-   pip install -r requirements_pb_table.txt
+   pip install -r requirements.txt
    ```
 
 2. **Import the library:**
