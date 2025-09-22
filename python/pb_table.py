@@ -21,8 +21,8 @@ import io
 # Import the compiled protobuf messages
 import head_pb2
 
-# Import the dynamic proto generator for proper Row message encoding
-from dynamic_proto_generator import DynamicRowGenerator, validate_header
+# Import the cross-language data encoder
+from data_encoder import encode_data_rows, decode_data_rows
 
 class ProtobufTableError(Exception):
     """Base exception for protobuf-table errors."""
@@ -241,12 +241,9 @@ def encode_table(obj: Dict[str, Any], callback: Optional[Callable] = None) -> by
         # Encode header using compiled proto
         header_bytes = _encode_header_delimited(obj_with_stats)
         
-        # Create dynamic row generator for proper protobuf Row messages
-        row_generator = DynamicRowGenerator(obj_with_stats['header'])
-        data_buffer = io.BytesIO()
-        
+        # Apply transforms to the data before encoding
+        transformed_data = []
         for row_index, row_data in enumerate(obj['data']):
-            # Apply transforms to the data before encoding
             transformed_row = []
             for col, field_def in enumerate(obj['header']):
                 field_type = field_def['type']
@@ -272,13 +269,13 @@ def encode_table(obj: Dict[str, Any], callback: Optional[Callable] = None) -> by
                     value = float(value)
                 
                 transformed_row.append(value)
-            
-            # Encode row using dynamic protobuf Row message
-            row_bytes = row_generator.encode_row_delimited(transformed_row)
-            data_buffer.write(row_bytes)
+            transformed_data.append(transformed_row)
+        
+        # Encode data using cross-language compatible format
+        data_bytes = encode_data_rows(obj_with_stats['header'], transformed_data)
         
         # Combine header and data
-        result = header_bytes + data_buffer.getvalue()
+        result = header_bytes + data_bytes
         
         if callback:
             callback(None, result)
@@ -296,19 +293,15 @@ def decode_table(buffer: bytes, callback: Optional[Callable] = None) -> Dict[str
         # Decode header using compiled proto
         header_obj, data_offset = _decode_header_delimited(buffer)
         
-        # Create dynamic row generator for proper protobuf Row messages
-        row_generator = DynamicRowGenerator(header_obj['header'])
+        # Decode data using cross-language compatible format
+        data_bytes = buffer[data_offset:]
+        decoded_rows = decode_data_rows(header_obj['header'], data_bytes)
         
-        # Decode data messages
+        # Apply reverse transforms
         result = dict(header_obj)
         result['data'] = []
         
-        offset = data_offset
-        while offset < len(buffer):
-            # Decode row using dynamic protobuf Row message
-            row_data, offset = row_generator.decode_row_delimited(buffer, offset)
-            
-            # Apply reverse transforms
+        for row_index, row_data in enumerate(decoded_rows):
             restored_row = []
             for col, field_def in enumerate(header_obj['header']):
                 field_type = field_def['type']
