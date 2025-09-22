@@ -5,6 +5,7 @@ npm-debug.log*
 
 # Directory for file storage
 files
+__pycache__
 
 # Runtime data
 pids

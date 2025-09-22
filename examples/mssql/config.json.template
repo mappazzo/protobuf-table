@@ -1,0 +1,15 @@
+{
+  "database": {
+    "server": "your_server_name_or_ip",
+    "database": "your_database_name",
+    "username": "your_username",
+    "password": "your_password",
+    "driver": "ODBC Driver 17 for SQL Server"
+  },
+  "query": {
+    "table": "your_timeseries_table_name",
+    "timestamp_column": "timestamp",
+    "value_columns": ["value1", "value2", "temperature", "pressure"],
+    "default_hours_back": 24
+  }
+}

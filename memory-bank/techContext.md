@@ -43,10 +43,10 @@
 ### JavaScript Build System
 ```json
 {
-  "build-dev": "babel src/pbTable.js -o dist/pbTable.js",
-  "build-min": "cross-env BABEL_ENV=production babel src/pbTable.js -o dist/pbTable-min.js",
+  "build-dev": "babel javascript/src/pbTable.js -o javascript/dist/pbTable.js",
+  "build-min": "cross-env BABEL_ENV=production babel javascript/src/pbTable.js -o javascript/dist/pbTable-min.js",
   "build": "npm run build-dev && npm run build-min",
-  "test": "node test/index.js"
+  "test": "node javascript/test/index.js"
 }
 ```
 
@@ -54,7 +54,7 @@
 ```bash
 # Install dependencies
 cd python
-pip install -r requirements_pb_table.txt
+pip install -r requirements.txt
 
 # Run tests
 python test_pb_table.py
@@ -66,23 +66,29 @@ python pb_table.py
 ### File Structure
 ```
 protobuf-table/
-├── src/
-│   ├── pbTable.js      # Main JavaScript implementation
-│   └── head.proto      # Protocol Buffer schema
-├── dist/               # Built files (generated)
-│   ├── pbTable.js      # Development build
-│   └── pbTable-min.js  # Production build
-├── test/
-│   ├── index.js        # JavaScript test runner
-│   ├── basic-test.js   # Core functionality tests
-│   ├── compress-test.js # Compression tests
-│   ├── smallTable.js   # Simple test data
-│   └── compressTable.js # Complex test data
+├── javascript/         # JavaScript implementation
+│   ├── src/
+│   │   ├── pbTable.js  # Main JavaScript implementation
+│   │   └── head.proto  # Protocol Buffer schema
+│   ├── dist/           # Built files (generated)
+│   │   ├── pbTable.js  # Development build
+│   │   └── pbTable-min.js # Production build
+│   ├── test/
+│   │   ├── index.js    # JavaScript test runner
+│   │   ├── basic-test.js # Core functionality tests
+│   │   ├── compress-test.js # Compression tests
+│   │   ├── smallTable.js # Simple test data
+│   │   └── compressTable.js # Complex test data
+│   ├── package.json    # Node.js package configuration
+│   ├── .babelrc        # Babel transpilation config
+│   ├── .eslintrc.js    # ESLint configuration
+│   └── .eslintignore   # ESLint ignore patterns
 ├── python/             # Python implementation
 │   ├── pb_table.py     # Main Python implementation
 │   ├── test_pb_table.py # Python test suite
-│   ├── README_pb_table.md # Python documentation
-│   └── requirements_pb_table.txt # Python dependencies
+│   ├── README.md       # Python documentation
+│   └── requirements.txt # Python dependencies
+├── examples/           # Usage examples
 └── memory-bank/        # Documentation
 ```
 
@@ -114,7 +120,7 @@ module.exports = {
 ### Python Configuration
 #### Requirements
 ```
-# requirements_pb_table.txt
+# requirements.txt
 protobuf>=4.21.0
 ```
 

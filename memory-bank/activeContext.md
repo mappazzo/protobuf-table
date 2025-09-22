@@ -16,7 +16,7 @@
 
 ## Recent Changes
 
-### Python Implementation Fixed and Completed (Today - December 2025)
+### Python Implementation Fixed and Completed (December 2025)
 1. **python/pb_table.py**: ✅ Simplified, working Python implementation (200+ lines)
    - Replaced complex protobuf descriptor approach with simplified binary format
    - All core functionality working: encode/decode, transforms, callbacks
@@ -24,9 +24,22 @@
 2. **python/test_pb_table.py**: ✅ Comprehensive test suite with 7 test categories (400+ lines)
    - All 7 test categories now passing (100% success rate)
    - Tests: basic arrays, verbose objects, transforms, sequences, metadata, errors, callbacks
-3. **python/README_pb_table.md**: Detailed Python documentation with examples
-4. **python/requirements_pb_table.txt**: Python dependencies specification (protobuf>=4.21.0)
-5. **python/pb_table_complex.py.bak**: Backup of original complex implementation for reference
+3. **python/README.md**: Detailed Python documentation with examples
+4. **python/requirements.txt**: Python dependencies specification (protobuf>=4.21.0)
+
+### Project Structure Reorganization (September 2025)
+1. **JavaScript Files Moved**: All JavaScript-related files moved to `javascript/` directory
+   - **javascript/package.json**: Node.js package configuration
+   - **javascript/.babelrc**: Babel transpilation configuration
+   - **javascript/.eslintrc.js**: ESLint code quality configuration
+   - **javascript/.eslintignore**: ESLint ignore patterns
+   - **javascript/src/**: Source code directory with main implementation
+   - **javascript/test/**: Test suite directory
+   - **javascript/dist/**: Built/compiled output directory
+2. **Python Files Cleaned**: Python directory file names simplified
+   - Renamed `README_pb_table.md` → `README.md`
+   - Renamed `requirements_pb_table.txt` → `requirements.txt`
+   - Removed backup files and temporary artifacts
 
 ### Critical Problem Resolution
 - **Issue**: Original Python implementation had fundamental protobuf descriptor creation problems
@@ -91,7 +104,7 @@
 ## Important Patterns and Preferences
 
 ### 1. Code Organization
-- **Single File Architecture**: Main implementation in `src/pbTable.js`
+- **Single File Architecture**: Main implementation in `javascript/src/pbTable.js`
 - **Functional Approach**: Pure functions with callback patterns
 - **Error Handling**: Consistent error-first callback pattern
 - **Validation**: Early input validation with descriptive errors
@@ -198,7 +211,7 @@
 - **Callback API**: Consistent with Node.js ecosystem patterns
 
 ### Build Status
-- **Source**: `src/pbTable.js` - main implementation
+- **Source**: `javascript/src/pbTable.js` - main implementation
 - **Builds**: Development and minified versions in `dist/`
 - **Tests**: All tests passing (basic and compression)
 - **Linting**: ESLint configuration in place
@@ -226,7 +239,7 @@ When resuming work on this project, the memory bank provides complete context in
 4. Continue with requested development work
 
 ### Key Files to Reference
-- **Main Implementation**: `src/pbTable.js`
-- **Tests**: `test/` directory for validation
+- **Main Implementation**: `javascript/src/pbTable.js`
+- **Tests**: `javascript/test/` directory for validation
 - **Documentation**: `README.md` for user-facing docs
 - **Memory Bank**: All files for complete project context
