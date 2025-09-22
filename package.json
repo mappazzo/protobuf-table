@@ -4,10 +4,12 @@
   "description": "A dynamic protobuf implementation for structured table data",
   "main": "javascript/dist/pbTable.js",
   "scripts": {
-    "build-dev": "babel javascript/src/pbTable.js -o javascript/dist/pbTable.js",
+    "build-proto": "node javascript/scripts/build-proto.js",
+    "build-dev": "npm run build-proto && babel javascript/src/pbTable.js -o javascript/dist/pbTable.js",
     "build-min": "cross-env BABEL_ENV=production babel javascript/src/pbTable.js -o javascript/dist/pbTable-min.js",
     "build": "npm run build-dev && npm run build-min",
-    "test": "node javascript/test/index.js"
+    "test": "node javascript/test/index.js",
+    "prebuild": "npm run build-proto"
   },
   "repository": {
     "type": "git",

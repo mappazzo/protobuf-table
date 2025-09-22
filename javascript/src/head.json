@@ -1,0 +1,121 @@
+{
+  "nested": {
+    "pbTableHeader": {
+      "nested": {
+        "Transform": {
+          "fields": {
+            "offset": {
+              "type": "int32",
+              "id": 1
+            },
+            "multip": {
+              "type": "int32",
+              "id": 2
+            },
+            "decimals": {
+              "type": "int32",
+              "id": 3
+            },
+            "sequence": {
+              "type": "bool",
+              "id": 4
+            }
+          }
+        },
+        "Stats": {
+          "fields": {
+            "start": {
+              "type": "double",
+              "id": 1
+            },
+            "end": {
+              "type": "double",
+              "id": 2
+            },
+            "min": {
+              "type": "double",
+              "id": 3
+            },
+            "max": {
+              "type": "double",
+              "id": 4
+            },
+            "mean": {
+              "type": "double",
+              "id": 5
+            }
+          }
+        },
+        "Field": {
+          "fields": {
+            "name": {
+              "type": "string",
+              "id": 1
+            },
+            "type": {
+              "type": "string",
+              "id": 2
+            },
+            "transform": {
+              "type": "Transform",
+              "id": 6
+            },
+            "stats": {
+              "type": "Stats",
+              "id": 7
+            }
+          }
+        },
+        "Meta": {
+          "fields": {
+            "name": {
+              "type": "string",
+              "id": 1
+            },
+            "owner": {
+              "type": "string",
+              "id": 2
+            },
+            "link": {
+              "type": "string",
+              "id": 3
+            },
+            "comment": {
+              "type": "string",
+              "id": 4
+            },
+            "rowCount": {
+              "type": "int32",
+              "id": 5
+            }
+          }
+        },
+        "tableHead": {
+          "fields": {
+            "header": {
+              "rule": "repeated",
+              "type": "Field",
+              "id": 1
+            },
+            "meta": {
+              "type": "Meta",
+              "id": 2
+            }
+          }
+        },
+        "Row": {
+          "fields": {}
+        },
+        "Data": {
+          "fields": {
+            "data": {
+              "rule": "repeated",
+              "type": "Row",
+              "id": 1
+            }
+          }
+        }
+      }
+    }
+  }
+}
