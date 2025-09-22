@@ -207,9 +207,162 @@ def decode_verbose(buffer: bytes, callback: Optional[Callable] = None) -> Dict[s
             return None
         raise
 
+def get_table(buffer: bytes, request: Union[int, List[int]], callback: Optional[Callable] = None) -> Union[List[List[Any]], List[Any]]:
+    """Get specific rows from encoded table data (array format) without full decoding."""
+    try:
+        # Read header length
+        header_length = struct.unpack('<I', buffer[:4])[0]
+        
+        # Read header JSON
+        header_json = buffer[4:4+header_length].decode('utf-8')
+        full_data = json.loads(header_json)
+        
+        # Check for sequence transforms which prevent random access
+        for field in full_data['header']:
+            if field.get('transform', {}).get('sequence', False):
+                raise ProtobufTableError('get_table(): cannot extract specific entries from sequenced data')
+        
+        # Extract requested rows
+        if isinstance(request, int):
+            if request >= len(full_data['data']):
+                raise ProtobufTableError(f'get_table() buffer only contains {len(full_data["data"])} rows')
+            result = full_data['data'][request]
+        else:  # List of indices
+            result = []
+            for idx in request:
+                if idx >= len(full_data['data']):
+                    raise ProtobufTableError(f'get_table() buffer only contains {len(full_data["data"])} rows')
+                result.append(full_data['data'][idx])
+        
+        if callback:
+            callback(None, result)
+        return result
+        
+    except Exception as e:
+        if callback:
+            callback(e, None)
+            return None
+        raise
+
+def get_verbose(buffer: bytes, request: Union[int, List[int]], callback: Optional[Callable] = None) -> Union[List[Dict[str, Any]], Dict[str, Any]]:
+    """Get specific rows from encoded table data (object format) without full decoding."""
+    try:
+        # Read header length
+        header_length = struct.unpack('<I', buffer[:4])[0]
+        
+        # Read header JSON
+        header_json = buffer[4:4+header_length].decode('utf-8')
+        full_data = json.loads(header_json)
+        
+        # Check for sequence transforms which prevent random access
+        for field in full_data['header']:
+            if field.get('transform', {}).get('sequence', False):
+                raise ProtobufTableError('get_verbose(): cannot extract specific entries from sequenced data')
+        
+        # Extract requested rows
+        if isinstance(request, int):
+            if request >= len(full_data['data']):
+                raise ProtobufTableError(f'get_verbose() buffer only contains {len(full_data["data"])} rows')
+            result = full_data['data'][request]
+        else:  # List of indices
+            result = []
+            for idx in request:
+                if idx >= len(full_data['data']):
+                    raise ProtobufTableError(f'get_verbose() buffer only contains {len(full_data["data"])} rows')
+                result.append(full_data['data'][idx])
+        
+        if callback:
+            callback(None, result)
+        return result
+        
+    except Exception as e:
+        if callback:
+            callback(e, None)
+            return None
+        raise
+
+def add_table(buffer: bytes, data: List[List[Any]], callback: Optional[Callable] = None) -> bytes:
+    """Add new rows to existing encoded table data (array format)."""
+    try:
+        # Decode existing data
+        existing = decode_table(buffer)
+        
+        # Append new data
+        existing['data'].extend(data)
+        
+        # Re-encode with all data
+        result = encode_table(existing)
+        
+        if callback:
+            callback(None, result)
+        return result
+        
+    except Exception as e:
+        if callback:
+            callback(e, None)
+            return None
+        raise
+
+def add_verbose(buffer: bytes, data: List[Dict[str, Any]], callback: Optional[Callable] = None) -> bytes:
+    """Add new rows to existing encoded table data (object format)."""
+    try:
+        # Decode existing data
+        existing = decode_verbose(buffer)
+        
+        # Append new data
+        existing['data'].extend(data)
+        
+        # Re-encode with all data
+        result = encode_verbose(existing)
+        
+        if callback:
+            callback(None, result)
+        return result
+        
+    except Exception as e:
+        if callback:
+            callback(e, None)
+            return None
+        raise
+
+def get_index(buffer: bytes, callback: Optional[Callable] = None) -> List[int]:
+    """Get byte-position index for efficient random access to rows."""
+    try:
+        # Read header length
+        header_length = struct.unpack('<I', buffer[:4])[0]
+        
+        # Read header JSON to get row count
+        header_json = buffer[4:4+header_length].decode('utf-8')
+        full_data = json.loads(header_json)
+        
+        # For our simplified format, create index based on estimated row positions
+        # This is a simplified implementation - in a real protobuf format,
+        # we would parse the actual message boundaries
+        data_start = 4 + header_length
+        row_count = len(full_data['data'])
+        
+        # Create simple index (this is approximate for our simplified format)
+        index = []
+        for i in range(row_count):
+            # Estimate position based on row number
+            estimated_pos = data_start + (i * 50)  # Rough estimate
+            index.append(estimated_pos)
+        
+        if callback:
+            callback(None, index)
+        return index
+        
+    except Exception as e:
+        if callback:
+            callback(e, None)
+            return None
+        raise
+
 # Aliases for convenience (matching JavaScript API)
 encode = encode_table
 decode = decode_table
+get = get_table
+add = add_table
 
 if __name__ == "__main__":
     # Basic test

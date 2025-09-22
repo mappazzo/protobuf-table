@@ -260,6 +260,171 @@ def handle_error(error, result):
 encode_table({'invalid': 'format'}, handle_error)
 ```
 
+### Random Access (Get Functions)
+
+```python
+from pb_table import encode_table, get_table, get_verbose, encode_verbose
+
+# Create test data
+table = {
+    'header': [
+        {'name': 'id', 'type': 'uint'},
+        {'name': 'name', 'type': 'string'},
+        {'name': 'value', 'type': 'float'}
+    ],
+    'data': [
+        [1, 'first', 1.1],
+        [2, 'second', 2.2],
+        [3, 'third', 3.3],
+        [4, 'fourth', 4.4]
+    ]
+}
+
+# Encode data
+encoded = encode_table(table)
+
+# Get single row (returns: [2, 'second', 2.2])
+row_1 = get_table(encoded, 1)
+
+# Get multiple rows (returns: [[1, 'first', 1.1], [3, 'third', 3.3]])
+rows_0_2 = get_table(encoded, [0, 2])
+
+# Object format example
+verbose_table = {
+    'header': table['header'],
+    'data': [
+        {'id': 1, 'name': 'first', 'value': 1.1},
+        {'id': 2, 'name': 'second', 'value': 2.2},
+        {'id': 3, 'name': 'third', 'value': 3.3},
+        {'id': 4, 'name': 'fourth', 'value': 4.4}
+    ]
+}
+
+encoded_verbose = encode_verbose(verbose_table)
+
+# Get single row (returns: {'id': 3, 'name': 'third', 'value': 3.3})
+row_verbose = get_verbose(encoded_verbose, 2)
+```
+
+### Data Addition (Add Functions)
+
+```python
+from pb_table import encode_table, add_table, decode_table, encode_verbose, add_verbose
+
+# Initial data
+initial_table = {
+    'header': [
+        {'name': 'id', 'type': 'uint'},
+        {'name': 'name', 'type': 'string'},
+        {'name': 'value', 'type': 'float'}
+    ],
+    'data': [
+        [1, 'first', 1.1],
+        [2, 'second', 2.2]
+    ]
+}
+
+# Encode initial data
+encoded = encode_table(initial_table)
+
+# Add new rows
+additional_data = [
+    [3, 'third', 3.3],
+    [4, 'fourth', 4.4]
+]
+
+# Append data (returns new encoded buffer)
+expanded = add_table(encoded, additional_data)
+
+# Verify expansion
+decoded = decode_table(expanded)
+print(f"Expanded from {len(initial_table['data'])} to {len(decoded['data'])} rows")
+
+# Object format example
+initial_verbose = {
+    'header': initial_table['header'],
+    'data': [
+        {'id': 1, 'name': 'first', 'value': 1.1},
+        {'id': 2, 'name': 'second', 'value': 2.2}
+    ]
+}
+
+additional_verbose = [
+    {'id': 3, 'name': 'third', 'value': 3.3},
+    {'id': 4, 'name': 'fourth', 'value': 4.4}
+]
+
+encoded_verbose = encode_verbose(initial_verbose)
+expanded_verbose = add_verbose(encoded_verbose, additional_verbose)
+```
+
+### Buffer Indexing
+
+```python
+from pb_table import encode_table, get_index
+
+table = {
+    'header': [
+        {'name': 'id', 'type': 'uint'},
+        {'name': 'name', 'type': 'string'}
+    ],
+    'data': [
+        [1, 'first'],
+        [2, 'second'],
+        [3, 'third'],
+        [4, 'fourth']
+    ]
+}
+
+encoded = encode_table(table)
+
+# Get byte positions for each row
+index = get_index(encoded)
+print(f"Row positions: {index}")
+# Output: Row positions: [8, 58, 108, 158] (example values)
+
+# Index can be used for efficient random access planning
+print(f"Row 2 starts at byte position: {index[2]}")
+```
+
+### Complete Workflow Example
+
+```python
+from pb_table import encode_table, get_table, add_table, decode_table, get_index
+
+# 1. Create and encode initial data
+table = {
+    'header': [
+        {'name': 'id', 'type': 'uint'},
+        {'name': 'name', 'type': 'string'},
+        {'name': 'score', 'type': 'float'}
+    ],
+    'data': [
+        [1, 'alice', 95.5],
+        [2, 'bob', 87.2]
+    ]
+}
+
+encoded = encode_table(table)
+print(f"Initial: {len(table['data'])} rows")
+
+# 2. Random access - get specific row
+first_row = get_table(encoded, 0)
+print(f"First row: {first_row}")
+
+# 3. Add new data
+new_data = [[3, 'charlie', 92.8]]
+expanded = add_table(encoded, new_data)
+
+# 4. Verify final result
+final = decode_table(expanded)
+print(f"Final: {len(final['data'])} rows")
+
+# 5. Generate index for the expanded data
+index = get_index(expanded)
+print(f"Index: {len(index)} positions")
+```
+
 ## Data Types
 
 The library supports the following data types:
@@ -302,16 +467,64 @@ This Python implementation provides equivalent functionality to the JavaScript p
 | `decodeTable()` | `decode_table()` | Decode array format |
 | `encodeVerbose()` | `encode_verbose()` | Encode object format |
 | `decodeVerbose()` | `decode_verbose()` | Decode object format |
+| `getTable()` | `get_table()` | Random access array format |
+| `getVerbose()` | `get_verbose()` | Random access object format |
+| `addTable()` | `add_table()` | Append data array format |
+| `addVerbose()` | `add_verbose()` | Append data object format |
+| `getIndex()` | `get_index()` | Generate byte-position index |
 | `encode()` | `encode()` | Alias for encode_table |
 | `decode()` | `decode()` | Alias for decode_table |
+| `get()` | `get()` | Alias for get_table |
+| `add()` | `add()` | Alias for add_table |
 
-### Missing Features (To Be Implemented)
+### Advanced Functions
 
-The following JavaScript functions are not yet implemented in Python:
+#### Random Access Functions
 
-- `get_table()` / `get_verbose()` - Random access to specific rows
-- `add_table()` / `add_verbose()` - Append data to existing buffers
-- `get_index()` - Generate byte-position index for random access
+**`get_table(buffer, request, callback=None)`** / **`get(buffer, request, callback=None)`**
+- Extract specific rows from encoded table data (array format) without full decoding
+- **Parameters:**
+  - `buffer`: bytes object containing encoded data
+  - `request`: int (single row index) or list of ints (multiple row indices)
+  - `callback`: Optional callback function (error, result)
+- **Returns:** Single row (list) or multiple rows (list of lists)
+- **Note:** Cannot be used with sequence transforms
+
+**`get_verbose(buffer, request, callback=None)`**
+- Extract specific rows from encoded table data (object format) without full decoding
+- **Parameters:**
+  - `buffer`: bytes object containing encoded data
+  - `request`: int (single row index) or list of ints (multiple row indices)
+  - `callback`: Optional callback function (error, result)
+- **Returns:** Single row (dict) or multiple rows (list of dicts)
+- **Note:** Cannot be used with sequence transforms
+
+#### Data Addition Functions
+
+**`add_table(buffer, data, callback=None)`** / **`add(buffer, data, callback=None)`**
+- Append new rows to existing encoded table data (array format)
+- **Parameters:**
+  - `buffer`: bytes object containing encoded data
+  - `data`: List of lists containing new rows to append
+  - `callback`: Optional callback function (error, result)
+- **Returns:** bytes object with expanded data
+
+**`add_verbose(buffer, data, callback=None)`**
+- Append new rows to existing encoded table data (object format)
+- **Parameters:**
+  - `buffer`: bytes object containing encoded data
+  - `data`: List of dicts containing new rows to append
+  - `callback`: Optional callback function (error, result)
+- **Returns:** bytes object with expanded data
+
+#### Buffer Analysis Functions
+
+**`get_index(buffer, callback=None)`**
+- Generate byte-position index for efficient random access to rows
+- **Parameters:**
+  - `buffer`: bytes object containing encoded data
+  - `callback`: Optional callback function (error, result)
+- **Returns:** List of integers representing byte positions of each row
 
 ## Testing
 

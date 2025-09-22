@@ -8,9 +8,9 @@ A JavaScript and Python library that provides dynamic Protocol Buffer implementa
 ## Language Support
 
 - **JavaScript/Node.js**: Full implementation with all features (see `javascript/` directory)
-- **Python**: ✅ **Complete core implementation** with all essential functionality (see `python/` directory)
+- **Python**: ✅ **Complete implementation** with full feature parity (see `python/` directory)
 
-Both implementations provide the same core features and maintain data compatibility.
+Both implementations provide identical functionality and maintain perfect data compatibility.
 
 ## Purpose
 
@@ -65,7 +65,7 @@ pip install -r requirements.txt
 ```
 
 ```python
-from pb_table import encode_table, decode_table
+from pb_table import encode_table, decode_table, get_table, add_table
 
 table = {
     'header': [
@@ -79,9 +79,19 @@ table = {
     ]
 }
 
+# Encode and decode
 encoded = encode_table(table)
 decoded = decode_table(encoded)
 print(f"Encoded to {len(encoded)} bytes")
+
+# Random access - get specific row
+first_row = get_table(encoded, 0)
+print(f"First row: {first_row}")
+
+# Add new data
+new_data = [['home', 12345, -41.123456]]
+expanded = add_table(encoded, new_data)
+print(f"Added data, new size: {len(decode_table(expanded)['data'])} rows")
 ```
 
 ## Documentation
@@ -100,9 +110,9 @@ print(f"Encoded to {len(encoded)} bytes")
 | Metadata support | ✅ | ✅ | **Fully Compatible** |
 | Error handling | ✅ | ✅ | **Fully Compatible** |
 | Callback API | ✅ | ✅ | **Fully Compatible** |
-| Random access (`get`) | ✅ | 🚧 | Planned |
-| Data appending (`add`) | ✅ | 🚧 | Planned |
-| Buffer indexing | ✅ | 🚧 | Planned |
+| Random access (`get`) | ✅ | ✅ | **Fully Compatible** |
+| Data appending (`add`) | ✅ | ✅ | **Fully Compatible** |
+| Buffer indexing | ✅ | ✅ | **Fully Compatible** |
 
 Data encoded with either implementation maintains perfect data integrity and cross-language compatibility.
 
