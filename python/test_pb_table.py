@@ -701,6 +701,254 @@ def test_indexing():
         traceback.print_exc()
         return False
 
+def test_statistics_calculation():
+    """Test statistics calculation for numerical columns."""
+    print("\nTesting statistics calculation...")
+    
+    # Test data with numerical columns
+    test_table = {
+        'header': [
+            {'name': 'id', 'type': 'uint'},
+            {'name': 'name', 'type': 'string'},
+            {'name': 'temperature', 'type': 'float'},
+            {'name': 'pressure', 'type': 'int'},
+            {'name': 'active', 'type': 'bool'}
+        ],
+        'data': [
+            [1, 'sensor1', 23.5, 1013, True],
+            [2, 'sensor2', 25.2, 1015, False],
+            [3, 'sensor3', 21.8, 1010, True],
+            [4, 'sensor4', 26.1, 1018, False],
+            [5, 'sensor5', 22.3, 1012, True]
+        ]
+    }
+    
+    # Test verbose format data
+    test_verbose = {
+        'header': [
+            {'name': 'id', 'type': 'uint'},
+            {'name': 'name', 'type': 'string'},
+            {'name': 'value', 'type': 'float'}
+        ],
+        'data': [
+            {'id': 10, 'name': 'test1', 'value': 1.5},
+            {'id': 20, 'name': 'test2', 'value': 3.7},
+            {'id': 30, 'name': 'test3', 'value': 2.1}
+        ]
+    }
+    
+    try:
+        # Test array format with statistics
+        encoded = encode_table(test_table, calculate_stats=True)
+        decoded = decode_table(encoded)
+        
+        # Verify statistics were calculated
+        if 'statistics' not in decoded:
+            print("✗ Statistics not found in decoded data")
+            return False
+        
+        stats = decoded['statistics']
+        print(f"✓ Statistics calculated for {len(stats)} numerical columns")
+        
+        # Verify statistics for temperature column
+        if 'temperature' in stats:
+            temp_stats = stats['temperature']
+            expected_min = 21.8
+            expected_max = 26.1
+            expected_start = 23.5
+            expected_end = 22.3
+            
+            if (temp_stats['min'] == expected_min and 
+                temp_stats['max'] == expected_max and
+                temp_stats['start'] == expected_start and
+                temp_stats['end'] == expected_end):
+                print("✓ Temperature statistics calculated correctly")
+            else:
+                print(f"✗ Temperature statistics incorrect: {temp_stats}")
+                return False
+        else:
+            print("✗ Temperature statistics not found")
+            return False
+        
+        # Verify statistics for pressure column
+        if 'pressure' in stats:
+            pressure_stats = stats['pressure']
+            expected_min = 1010
+            expected_max = 1018
+            expected_start = 1013
+            expected_end = 1012
+            
+            if (pressure_stats['min'] == expected_min and 
+                pressure_stats['max'] == expected_max and
+                pressure_stats['start'] == expected_start and
+                pressure_stats['end'] == expected_end):
+                print("✓ Pressure statistics calculated correctly")
+            else:
+                print(f"✗ Pressure statistics incorrect: {pressure_stats}")
+                return False
+        else:
+            print("✗ Pressure statistics not found")
+            return False
+        
+        # Verify no statistics for non-numerical columns
+        if 'name' in stats or 'active' in stats:
+            print("✗ Statistics calculated for non-numerical columns")
+            return False
+        else:
+            print("✓ Statistics correctly excluded non-numerical columns")
+        
+        # Test verbose format with statistics
+        encoded_verbose = encode_verbose(test_verbose, calculate_stats=True)
+        decoded_verbose = decode_verbose(encoded_verbose)
+        
+        if 'statistics' in decoded_verbose and 'value' in decoded_verbose['statistics']:
+            value_stats = decoded_verbose['statistics']['value']
+            if (value_stats['min'] == 1.5 and 
+                value_stats['max'] == 3.7 and
+                value_stats['start'] == 1.5 and
+                value_stats['end'] == 2.1):
+                print("✓ Verbose format statistics calculated correctly")
+            else:
+                print(f"✗ Verbose format statistics incorrect: {value_stats}")
+                return False
+        else:
+            print("✗ Verbose format statistics not found")
+            return False
+        
+        # Test encoding without statistics
+        encoded_no_stats = encode_table(test_table, calculate_stats=False)
+        decoded_no_stats = decode_table(encoded_no_stats)
+        
+        if 'statistics' not in decoded_no_stats:
+            print("✓ Statistics correctly omitted when calculate_stats=False")
+        else:
+            print("✗ Statistics included when calculate_stats=False")
+            return False
+        
+        return True
+        
+    except Exception as e:
+        print(f"✗ Statistics calculation test failed: {e}")
+        traceback.print_exc()
+        return False
+
+def test_statistics_updates():
+    """Test statistics updates when appending data."""
+    print("\nTesting statistics updates...")
+    
+    # Initial data
+    initial_table = {
+        'header': [
+            {'name': 'id', 'type': 'uint'},
+            {'name': 'value', 'type': 'float'},
+            {'name': 'count', 'type': 'int'}
+        ],
+        'data': [
+            [1, 10.5, 100],
+            [2, 15.2, 150]
+        ]
+    }
+    
+    # Additional data
+    additional_data = [
+        [3, 8.7, 80],   # New min for value, new min for count
+        [4, 18.9, 200]  # New max for value, new max for count
+    ]
+    
+    # Verbose format data
+    initial_verbose = {
+        'header': [
+            {'name': 'id', 'type': 'uint'},
+            {'name': 'score', 'type': 'float'}
+        ],
+        'data': [
+            {'id': 1, 'score': 85.5},
+            {'id': 2, 'score': 92.3}
+        ]
+    }
+    
+    additional_verbose = [
+        {'id': 3, 'score': 78.1},  # New min
+        {'id': 4, 'score': 96.7}   # New max
+    ]
+    
+    try:
+        # Test array format statistics updates
+        encoded = encode_table(initial_table, calculate_stats=True)
+        initial_decoded = decode_table(encoded)
+        
+        # Verify initial statistics
+        initial_stats = initial_decoded['statistics']
+        if (initial_stats['value']['min'] == 10.5 and 
+            initial_stats['value']['max'] == 15.2 and
+            initial_stats['count']['min'] == 100 and
+            initial_stats['count']['max'] == 150):
+            print("✓ Initial statistics calculated correctly")
+        else:
+            print(f"✗ Initial statistics incorrect: {initial_stats}")
+            return False
+        
+        # Add data and check updated statistics
+        expanded = add_table(encoded, additional_data)
+        final_decoded = decode_table(expanded)
+        
+        if 'statistics' not in final_decoded:
+            print("✗ Statistics lost after adding data")
+            return False
+        
+        final_stats = final_decoded['statistics']
+        
+        # Check updated statistics
+        if (final_stats['value']['min'] == 8.7 and    # New min
+            final_stats['value']['max'] == 18.9 and   # New max
+            final_stats['value']['start'] == 10.5 and # Original start
+            final_stats['value']['end'] == 18.9 and   # New end
+            final_stats['count']['min'] == 80 and     # New min
+            final_stats['count']['max'] == 200 and    # New max
+            final_stats['count']['start'] == 100 and  # Original start
+            final_stats['count']['end'] == 200):      # New end
+            print("✓ Statistics updated correctly after adding data")
+        else:
+            print(f"✗ Statistics not updated correctly: {final_stats}")
+            return False
+        
+        # Test verbose format statistics updates
+        encoded_verbose = encode_verbose(initial_verbose, calculate_stats=True)
+        expanded_verbose = add_verbose(encoded_verbose, additional_verbose)
+        final_verbose = decode_verbose(expanded_verbose)
+        
+        if 'statistics' in final_verbose and 'score' in final_verbose['statistics']:
+            score_stats = final_verbose['statistics']['score']
+            if (score_stats['min'] == 78.1 and    # New min
+                score_stats['max'] == 96.7 and    # New max
+                score_stats['start'] == 85.5 and  # Original start
+                score_stats['end'] == 96.7):      # New end
+                print("✓ Verbose format statistics updated correctly")
+            else:
+                print(f"✗ Verbose format statistics not updated correctly: {score_stats}")
+                return False
+        else:
+            print("✗ Verbose format statistics not found after update")
+            return False
+        
+        # Test adding data to table without initial statistics
+        no_stats_encoded = encode_table(initial_table, calculate_stats=False)
+        no_stats_expanded = add_table(no_stats_encoded, additional_data)
+        no_stats_final = decode_table(no_stats_expanded)
+        
+        if 'statistics' not in no_stats_final:
+            print("✓ No statistics created when adding to table without initial statistics")
+        else:
+            print("✗ Statistics unexpectedly created when adding to table without initial statistics")
+            return False
+        
+        return True
+        
+    except Exception as e:
+        print(f"✗ Statistics updates test failed: {e}")
+        traceback.print_exc()
+        return False
+
 def test_comprehensive_api():
     """Test comprehensive API compatibility with all new functions."""
     print("\nTesting comprehensive API compatibility...")
@@ -796,6 +1044,8 @@ def run_all_tests():
         test_sequence_access_restriction,
         test_data_addition,
         test_indexing,
+        test_statistics_calculation,
+        test_statistics_updates,
         test_comprehensive_api
     ]
     

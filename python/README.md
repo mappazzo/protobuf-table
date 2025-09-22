@@ -29,11 +29,12 @@ Python implementation of the protobuf-table library for structured table data co
 
 #### Array Format (Default)
 
-**`encode_table(obj, callback=None)`** / **`encode(obj, callback=None)`**
+**`encode_table(obj, callback=None, calculate_stats=False)`** / **`encode(obj, callback=None, calculate_stats=False)`**
 - Encode table data in array format to protobuf bytes
 - **Parameters:**
   - `obj`: Dictionary with 'header' and 'data' keys
   - `callback`: Optional callback function (error, result)
+  - `calculate_stats`: Boolean flag to calculate statistics for numerical columns
 - **Returns:** bytes object containing encoded data
 
 **`decode_table(buffer, callback=None)`** / **`decode(buffer, callback=None)`**
@@ -45,11 +46,12 @@ Python implementation of the protobuf-table library for structured table data co
 
 #### Object Format (Verbose)
 
-**`encode_verbose(obj, callback=None)`**
+**`encode_verbose(obj, callback=None, calculate_stats=False)`**
 - Encode table data in object format to protobuf bytes
 - **Parameters:**
   - `obj`: Dictionary with 'header' and 'data' keys (data as list of dicts)
   - `callback`: Optional callback function (error, result)
+  - `calculate_stats`: Boolean flag to calculate statistics for numerical columns
 - **Returns:** bytes object containing encoded data
 
 **`decode_verbose(buffer, callback=None)`**
@@ -385,6 +387,103 @@ print(f"Row positions: {index}")
 
 # Index can be used for efficient random access planning
 print(f"Row 2 starts at byte position: {index[2]}")
+```
+
+### Statistics Calculation
+
+```python
+from pb_table import encode_table, decode_table, add_table, encode_verbose, decode_verbose
+
+# Table with numerical data for statistics
+sensor_data = {
+    'header': [
+        {'name': 'id', 'type': 'uint'},
+        {'name': 'name', 'type': 'string'},
+        {'name': 'temperature', 'type': 'float'},
+        {'name': 'pressure', 'type': 'int'},
+        {'name': 'active', 'type': 'bool'}
+    ],
+    'data': [
+        [1, 'sensor1', 23.5, 1013, True],
+        [2, 'sensor2', 25.2, 1015, False],
+        [3, 'sensor3', 21.8, 1010, True],
+        [4, 'sensor4', 26.1, 1018, False],
+        [5, 'sensor5', 22.3, 1012, True]
+    ]
+}
+
+# Encode with statistics calculation enabled
+encoded = encode_table(sensor_data, calculate_stats=True)
+decoded = decode_table(encoded)
+
+# Access calculated statistics
+if 'statistics' in decoded:
+    stats = decoded['statistics']
+    print("Statistics calculated for numerical columns:")
+    
+    for column_name, column_stats in stats.items():
+        print(f"\n{column_name}:")
+        print(f"  Min: {column_stats['min']}")
+        print(f"  Max: {column_stats['max']}")
+        print(f"  Start: {column_stats['start']}")  # First value
+        print(f"  End: {column_stats['end']}")      # Last value
+
+# Output:
+# Statistics calculated for numerical columns:
+# 
+# id:
+#   Min: 1
+#   Max: 5
+#   Start: 1
+#   End: 5
+# 
+# temperature:
+#   Min: 21.8
+#   Max: 26.1
+#   Start: 23.5
+#   End: 22.3
+# 
+# pressure:
+#   Min: 1010
+#   Max: 1018
+#   Start: 1013
+#   End: 1012
+
+# Statistics are automatically updated when adding data
+additional_data = [
+    [6, 'sensor6', 19.5, 1008, True],  # New min temperature and pressure
+    [7, 'sensor7', 28.3, 1020, False]  # New max temperature and pressure
+]
+
+expanded = add_table(encoded, additional_data)
+final_decoded = decode_table(expanded)
+
+# Updated statistics reflect the new data
+final_stats = final_decoded['statistics']
+print(f"\nUpdated temperature stats:")
+print(f"  Min: {final_stats['temperature']['min']}")  # Now 19.5
+print(f"  Max: {final_stats['temperature']['max']}")  # Now 28.3
+print(f"  End: {final_stats['temperature']['end']}")  # Now 28.3 (last added)
+
+# Object format also supports statistics
+verbose_data = {
+    'header': [
+        {'name': 'id', 'type': 'uint'},
+        {'name': 'value', 'type': 'float'}
+    ],
+    'data': [
+        {'id': 10, 'value': 1.5},
+        {'id': 20, 'value': 3.7},
+        {'id': 30, 'value': 2.1}
+    ]
+}
+
+encoded_verbose = encode_verbose(verbose_data, calculate_stats=True)
+decoded_verbose = decode_verbose(encoded_verbose)
+
+print(f"\nVerbose format statistics:")
+print(f"Value stats: {decoded_verbose['statistics']['value']}")
+# Output: {'min': 1.5, 'max': 3.7, 'start': 1.5, 'end': 2.1}
 ```
 
 ### Complete Workflow Example

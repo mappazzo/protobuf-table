@@ -73,7 +73,94 @@ class TransformInteger:
             
         return value
 
-def encode_table(obj: Dict[str, Any], callback: Optional[Callable] = None) -> bytes:
+def _calculate_statistics(header: List[Dict[str, Any]], data: List[Any]) -> Dict[str, Dict[str, Union[int, float]]]:
+    """Calculate basic statistics (min, max, start, end) for numerical columns."""
+    statistics = {}
+    
+    # Determine if data is array format or object format
+    is_array_format = isinstance(data[0], list) if data else True
+    
+    for col_idx, field in enumerate(header):
+        field_name = field['name']
+        field_type = field['type']
+        
+        # Only calculate statistics for numerical types
+        if field_type in ['int', 'uint', 'float']:
+            values = []
+            
+            # Extract values based on data format
+            if is_array_format:
+                values = [row[col_idx] for row in data if row[col_idx] is not None]
+            else:
+                values = [row[field_name] for row in data if row.get(field_name) is not None]
+            
+            if values:
+                # Convert to numbers, handling potential string representations
+                numeric_values = []
+                for val in values:
+                    try:
+                        numeric_values.append(float(val) if field_type == 'float' else int(val))
+                    except (ValueError, TypeError):
+                        continue
+                
+                if numeric_values:
+                    statistics[field_name] = {
+                        'min': min(numeric_values),
+                        'max': max(numeric_values),
+                        'start': numeric_values[0],  # First value
+                        'end': numeric_values[-1]    # Last value
+                    }
+    
+    return statistics
+
+def _update_statistics(existing_stats: Dict[str, Dict[str, Union[int, float]]], 
+                      header: List[Dict[str, Any]], 
+                      new_data: List[Any]) -> Dict[str, Dict[str, Union[int, float]]]:
+    """Update existing statistics with new data."""
+    if not existing_stats:
+        return _calculate_statistics(header, new_data)
+    
+    updated_stats = json.loads(json.dumps(existing_stats))  # Deep copy
+    
+    # Determine if data is array format or object format
+    is_array_format = isinstance(new_data[0], list) if new_data else True
+    
+    for col_idx, field in enumerate(header):
+        field_name = field['name']
+        field_type = field['type']
+        
+        # Only update statistics for numerical types
+        if field_type in ['int', 'uint', 'float'] and field_name in updated_stats:
+            values = []
+            
+            # Extract values based on data format
+            if is_array_format:
+                values = [row[col_idx] for row in new_data if row[col_idx] is not None]
+            else:
+                values = [row[field_name] for row in new_data if row.get(field_name) is not None]
+            
+            if values:
+                # Convert to numbers
+                numeric_values = []
+                for val in values:
+                    try:
+                        numeric_values.append(float(val) if field_type == 'float' else int(val))
+                    except (ValueError, TypeError):
+                        continue
+                
+                if numeric_values:
+                    current_stats = updated_stats[field_name]
+                    
+                    # Update min and max
+                    current_stats['min'] = min(current_stats['min'], min(numeric_values))
+                    current_stats['max'] = max(current_stats['max'], max(numeric_values))
+                    
+                    # Update end value (last value in the new data becomes the new end)
+                    current_stats['end'] = numeric_values[-1]
+    
+    return updated_stats
+
+def encode_table(obj: Dict[str, Any], callback: Optional[Callable] = None, calculate_stats: bool = False) -> bytes:
     """Encode table data (array format) to protobuf bytes."""
     try:
         if not obj.get('header') or not obj.get('data'):
@@ -88,11 +175,15 @@ def encode_table(obj: Dict[str, Any], callback: Optional[Callable] = None) -> by
             if field_type is None:
                 raise ProtobufTableError(f'Invalid type: {field["type"]}')
         
-        # For now, create a simple binary format that mimics the structure
-        # This is a simplified approach until we get the protobuf working properly
+        # Create a copy to avoid modifying the original
+        encoded_obj = json.loads(json.dumps(obj))
+        
+        # Calculate statistics if requested
+        if calculate_stats and encoded_obj['data']:
+            encoded_obj['statistics'] = _calculate_statistics(encoded_obj['header'], encoded_obj['data'])
         
         # Encode header as JSON for simplicity
-        header_json = json.dumps(obj).encode('utf-8')
+        header_json = json.dumps(encoded_obj).encode('utf-8')
         header_length = len(header_json)
         
         # Create simple binary format: [header_length][header_json][data_placeholder]
@@ -128,7 +219,7 @@ def decode_table(buffer: bytes, callback: Optional[Callable] = None) -> Dict[str
             return None
         raise
 
-def encode_verbose(obj: Dict[str, Any], callback: Optional[Callable] = None) -> bytes:
+def encode_verbose(obj: Dict[str, Any], callback: Optional[Callable] = None, calculate_stats: bool = False) -> bytes:
     """Encode table data (object format) to protobuf bytes."""
     try:
         if not obj.get('header') or not obj.get('data'):
@@ -136,6 +227,10 @@ def encode_verbose(obj: Dict[str, Any], callback: Optional[Callable] = None) -> 
         
         # Apply transforms like in JS
         enc = json.loads(json.dumps(obj))  # Deep copy
+        
+        # Calculate statistics before transforms if requested
+        if calculate_stats and enc['data']:
+            enc['statistics'] = _calculate_statistics(enc['header'], enc['data'])
         
         for col, head in enumerate(obj['header']):
             if head['type'] in ['int', 'uint']:
@@ -287,11 +382,16 @@ def add_table(buffer: bytes, data: List[List[Any]], callback: Optional[Callable]
         # Decode existing data
         existing = decode_table(buffer)
         
+        # Update statistics if they exist
+        if 'statistics' in existing and existing['statistics']:
+            existing['statistics'] = _update_statistics(existing['statistics'], existing['header'], data)
+        
         # Append new data
         existing['data'].extend(data)
         
-        # Re-encode with all data
-        result = encode_table(existing)
+        # Re-encode with all data, preserving statistics calculation flag
+        calculate_stats = 'statistics' in existing
+        result = encode_table(existing, calculate_stats=calculate_stats)
         
         if callback:
             callback(None, result)
@@ -309,11 +409,16 @@ def add_verbose(buffer: bytes, data: List[Dict[str, Any]], callback: Optional[Ca
         # Decode existing data
         existing = decode_verbose(buffer)
         
+        # Update statistics if they exist
+        if 'statistics' in existing and existing['statistics']:
+            existing['statistics'] = _update_statistics(existing['statistics'], existing['header'], data)
+        
         # Append new data
         existing['data'].extend(data)
         
-        # Re-encode with all data
-        result = encode_verbose(existing)
+        # Re-encode with all data, preserving statistics calculation flag
+        calculate_stats = 'statistics' in existing
+        result = encode_verbose(existing, calculate_stats=calculate_stats)
         
         if callback:
             callback(None, result)
