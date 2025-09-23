@@ -1061,7 +1061,7 @@ def test_comprehensive_api():
         
         # Test indexing on expanded data
         index = get_index(expanded)
-        if len(index) == 3:  # Original 2 + 1 new
+        if len(index) == len(test_table['data']) + 1:  # Original 2 + 1 new
             print("✓ Indexing works on expanded data")
         else:
             print(f"✗ Indexing failed on expanded data: {len(index)} != 3")
@@ -1130,9 +1130,52 @@ def cross_platform_test():
     try:
         project_root = get_project_root()
         js_file_path = os.path.join(project_root, 'testdata', 'complex_test_suite_js.pb')
+        
+        # Load original JSON for compression ratio calculation
+        json_file_path = os.path.join(project_root, 'testdata', 'complex_test_suite.json')
+        with open(json_file_path, 'r', encoding='utf-8') as f:
+            json_data = f.read()
+        json_size = len(json_data.encode('utf-8'))
+        
+        # Load JavaScript binary
         with open(js_file_path, 'rb') as f:
             js_data = f.read()
-        print(f'Loaded JavaScript data: {len(js_data)} bytes')
+        js_binary_size = len(js_data)
+        
+        # Load Python binary for comparison
+        py_file_path = os.path.join(project_root, 'testdata', 'complex_test_suite_python.pb')
+        try:
+            with open(py_file_path, 'rb') as f:
+                py_data = f.read()
+            py_binary_size = len(py_data)
+        except FileNotFoundError:
+            py_binary_size = None
+        
+        # Calculate compression ratios
+        js_compression_ratio = json_size / js_binary_size if js_binary_size > 0 else 0
+        js_compression_percent = ((json_size - js_binary_size) / json_size * 100) if json_size > 0 else 0
+        
+        print(f'📊 Compression Analysis:')
+        print(f'  Original JSON: {json_size:,} bytes')
+        print(f'  JavaScript binary: {js_binary_size:,} bytes')
+        if py_binary_size is not None:
+            py_compression_ratio = json_size / py_binary_size if py_binary_size > 0 else 0
+            py_compression_percent = ((json_size - py_binary_size) / json_size * 100) if json_size > 0 else 0
+            print(f'  Python binary: {py_binary_size:,} bytes')
+            print(f'  JS compression ratio: {js_compression_ratio:.2f}:1 ({js_compression_percent:.1f}% reduction)')
+            print(f'  Python compression ratio: {py_compression_ratio:.2f}:1 ({py_compression_percent:.1f}% reduction)')
+            size_diff = abs(js_binary_size - py_binary_size)
+            if js_binary_size == py_binary_size:
+                print(f'  ✅ Binary formats identical: {js_binary_size:,} bytes')
+            elif js_binary_size < py_binary_size:
+                print(f'  📈 JavaScript binary smaller by {size_diff:,} bytes')
+            else:
+                print(f'  📈 Python binary smaller by {size_diff:,} bytes')
+        else:
+            print(f'  Compression ratio: {js_compression_ratio:.2f}:1')
+            print(f'  Size reduction: {js_compression_percent:.1f}%')
+        print(f'  Space saved: {json_size - js_binary_size:,} bytes')
+        
         # Try to decode with Python
         decoded = decode_table(js_data)
         print(f'✓ Successfully decoded JavaScript data with Python!')

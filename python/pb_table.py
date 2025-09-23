@@ -527,9 +527,18 @@ def get_index(buffer: bytes, callback: Optional[Callable] = None) -> List[int]:
             # Record the start position of this message
             index.append(offset)
             
+            # Read tag first
+            tag, new_offset = _DecodeVarint32(buffer, offset)
+            wire_type = tag & 7
+            field_number = tag >> 3
+            
+            # Expect field 1 with length-delimited wire type
+            if wire_type != 2 or field_number != 1:
+                break  # End of data messages
+            
             # Read message length and skip to next message
-            length, new_offset = _DecodeVarint32(buffer, offset)
-            offset = new_offset + length
+            length, new_offset2 = _DecodeVarint32(buffer, new_offset)
+            offset = new_offset2 + length
         
         if callback:
             callback(None, index)
