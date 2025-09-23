@@ -63,7 +63,11 @@ class TransformInteger:
         sequence = transform.get('sequence', False)
         
         value = stored_value * (10 ** -decimals)
-        value = value / multip
+        
+        # Handle division by zero case (when multip is 0)
+        if multip != 0:
+            value = value / multip
+        # If multip is 0, the value is already the stored value (no multiplication was applied)
         
         if sequence and last_val:
             value += last_val
@@ -566,17 +570,17 @@ if __name__ == "__main__":
     # Test encoding
     try:
         encoded = encode_table(test_table)
-        print(f"✓ Encoded {len(test_table['data'])} rows to {len(encoded)} bytes")
+        print(f" Encoded {len(test_table['data'])} rows to {len(encoded)} bytes")
     except Exception as e:
-        print(f"✗ Encoding failed: {e}")
+        print(f" Encoding failed: {e}")
         exit(1)
     
     # Test decoding
     try:
         decoded = decode_table(encoded)
-        print(f"✓ Decoded {len(decoded['data'])} rows")
+        print(f" Decoded {len(decoded['data'])} rows")
     except Exception as e:
-        print(f"✗ Decoding failed: {e}")
+        print(f" Decoding failed: {e}")
         exit(1)
     
     # Compare data with float tolerance

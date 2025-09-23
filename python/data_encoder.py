@@ -238,19 +238,49 @@ class DataEncoder:
             # Read message data
             message_data = data_bytes[new_offset:new_offset + length]
             
-            # Parse Data message
-            data_msg = data_class()
-            data_msg.ParseFromString(message_data)
-            
-            # Extract row data (should be single row)
-            if len(data_msg.data) > 0:
-                row_msg = data_msg.data[0]
-                row_data = []
-                for field_def in header_fields:
-                    field_name = field_def['name']
-                    value = getattr(row_msg, field_name, None)
-                    row_data.append(value)
-                result.append(row_data)
+            # Try to parse as Data message first (Python format)
+            try:
+                data_msg = data_class()
+                data_msg.ParseFromString(message_data)
+                
+                # Extract row data (should be single row)
+                if len(data_msg.data) > 0:
+                    row_msg = data_msg.data[0]
+                    row_data = []
+                    for field_def in header_fields:
+                        field_name = field_def['name']
+                        value = getattr(row_msg, field_name, None)
+                        row_data.append(value)
+                    result.append(row_data)
+                else:
+                    # Empty data message, try as direct Row message (JavaScript format)
+                    row_msg = row_class()
+                    row_msg.ParseFromString(message_data)
+                    
+                    # Extract row data directly from Row message
+                    row_data = []
+                    for field_def in header_fields:
+                        field_name = field_def['name']
+                        value = getattr(row_msg, field_name, None)
+                        row_data.append(value)
+                    result.append(row_data)
+                    
+            except Exception:
+                # Fallback: try to parse as direct Row message (JavaScript format)
+                try:
+                    row_msg = row_class()
+                    row_msg.ParseFromString(message_data)
+                    
+                    # Extract row data directly from Row message
+                    row_data = []
+                    for field_def in header_fields:
+                        field_name = field_def['name']
+                        value = getattr(row_msg, field_name, None)
+                        row_data.append(value)
+                    result.append(row_data)
+                        
+                except Exception as e:
+                    raise ProtobufTableError(f'Failed to parse message at offset {offset}: {e}')
             
             offset = new_offset + length
         

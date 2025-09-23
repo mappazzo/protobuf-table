@@ -1,0 +1,66 @@
+{
+  "description": "Most complex test case combining all transform types and data types",
+  "test_table": {
+    "header": [
+      {
+        "name": "timestamp",
+        "type": "uint",
+        "transform": {
+          "offset": 1609459200
+        }
+      },
+      {
+        "name": "latitude",
+        "type": "int",
+        "transform": {
+          "offset": -42,
+          "multip": 1000,
+          "decimals": 3
+        }
+      },
+      {
+        "name": "temperature",
+        "type": "int",
+        "transform": {
+          "offset": 0,
+          "multip": 100,
+          "decimals": 2
+        }
+      },
+      {
+        "name": "counter",
+        "type": "uint",
+        "transform": {
+          "offset": 100
+        }
+      },
+      {
+        "name": "value",
+        "type": "int",
+        "transform": {
+          "offset": 1000
+        }
+      },
+      {
+        "name": "location",
+        "type": "string"
+      },
+      {
+        "name": "active",
+        "type": "bool"
+      }
+    ],
+    "meta": {
+      "filename": "complex_test_suite.json",
+      "owner": "completex_test_suite",
+      "comment": "Most complex test case with all transform types and data types, transform but no sequence compression"
+    },
+    "data": [
+      [1609459260, -41.123456, 23.45, 100, 1010, "sensor_01", true],
+      [1609459320, -41.123789, 23.67, 105, 1015, "sensor_02", false],
+      [1609459380, -41.124012, 23.89, 112, 1008, "sensor_03", true],
+      [1609459440, -41.124235, 24.12, 120, 1025, "sensor_04", false],
+      [1609459500, -41.124458, 24.34, 128, 1032, "sensor_05", true]
+    ]
+  }
+}

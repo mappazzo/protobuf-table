@@ -1197,11 +1197,10 @@ def run_all_tests():
 if __name__ == "__main__":
     
     args = sys.argv
-    print(args)
-    if args[1] == 'cross':
-        success = cross_platform_test()
-    else:
+    if len(args) == 1 or args[1] != 'cross':
         success = run_all_tests()
+    else:
+        success = cross_platform_test()
 
     if success:
         print("\n" + "🎉" * 20)
