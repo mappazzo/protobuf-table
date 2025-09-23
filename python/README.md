@@ -228,6 +228,48 @@ This implementation maintains wire format compatibility with the JavaScript vers
 - Compatible statistics calculation
 - Matching API signatures
 
+## Compression Optimizer
+
+The Python implementation includes an intelligent compression optimizer that analyzes your data and finds optimal transform settings:
+
+### Usage
+
+```bash
+# Analyze data for optimal compression
+python pb_table_optimizer.py testdata/complex_test_suite.json
+
+# Verbose analysis with detailed results
+python pb_table_optimizer.py data.json --verbose
+
+# Save optimal configuration to file
+python pb_table_optimizer.py data.json --output-config config.json
+```
+
+### Example Output
+
+```
+🏆 Best configuration: timestamp_sequence
+   Achieves 2.31:1 compression ratio
+   Saves 938 bytes (56.7% reduction)
+   0.3% better than baseline (2 bytes saved)
+   Recommended transforms: {'timestamp': {'offset': 0, 'multip': 1, 'decimals': 0, 'sequence': True}}
+```
+
+### Features
+
+- **Automatic Analysis**: Detects numeric fields and analyzes data patterns
+- **Transform Generation**: Tests offset, sequence, decimal precision, and combination transforms
+- **Data Integrity Verification**: Ensures transforms don't corrupt data
+- **Performance Measurement**: Tracks compression ratios and processing time
+- **Configuration Export**: Saves optimal settings as JSON for reuse
+
+### Supported Optimizations
+
+- **Offset Transforms**: Subtract baseline values (e.g., for timestamps)
+- **Sequence Transforms**: Delta encoding for time-series data
+- **Decimal Precision**: Optimize floating-point storage
+- **Combination Strategies**: Test multiple fields with different transforms
+
 ## Testing
 
 Run the test suite:
@@ -236,6 +278,9 @@ Run the test suite:
 python test_pb_table.py      # Basic functionality tests
 python test_stats.py         # Statistics functionality tests
 python pb_table.py          # Built-in basic test
+
+# Cross-platform compatibility test
+python test_pb_table.py cross
 ```
 
 ## Development

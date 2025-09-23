@@ -430,6 +430,76 @@ npm run build
 npm run test
 ```
 
+### Cross-Platform Testing
+
+**Important**: Always test cross-platform compatibility with your specific datasets before production use.
+
+#### Test JavaScript ↔ Python Compatibility
+
+Use the existing cross-platform test scripts:
+
+```bash
+# Test Python's ability to decode JavaScript-encoded data
+cd ../python
+python test/test_pb_table.py cross
+
+# This will:
+# 1. Load JavaScript-encoded binary data
+# 2. Attempt to decode with Python
+# 3. Report compression ratios and data integrity
+# 4. Show any compatibility issues
+```
+
+#### Validate Your Data
+
+Before deploying to production, test your specific data format:
+
+```javascript
+// 1. Encode your data with JavaScript
+const yourData = { /* your table structure */ };
+pbTable.encodeTable(yourData, (err, buffer) => {
+  if (err) return console.error(err);
+  
+  // Save for cross-platform testing
+  require('fs').writeFileSync('your_data_js.pb', buffer);
+  console.log('JavaScript encoding: ✓');
+});
+
+// 2. Test with Python decoder (run this in Python):
+// python -c "
+// from python.pb_table import decode_table
+// with open('your_data_js.pb', 'rb') as f:
+//     data = f.read()
+// decoded = decode_table(data)
+// print(f'Python decoding: ✓ {len(decoded[\"data\"])} rows')
+// "
+```
+
+#### Compression Analysis
+
+Test compression effectiveness on your datasets:
+
+```bash
+# Use Python's compression optimizer on your data
+python python/pb_table_optimizer.py your_data.json --verbose
+
+# This will show:
+# - Optimal transform settings for your data
+# - Compression ratios achieved
+# - Cross-platform compatibility verification
+```
+
+#### Production Checklist
+
+Before using protobuf-table in production:
+
+- [ ] Test encode/decode with your actual data structure
+- [ ] Verify cross-platform compatibility (JS ↔ Python)
+- [ ] Analyze compression ratios for your datasets
+- [ ] Test with edge cases (empty data, large datasets, special values)
+- [ ] Validate transform settings if using compression features
+- [ ] Benchmark performance with your data volumes
+
 ### Development
 ```bash
 npm install
