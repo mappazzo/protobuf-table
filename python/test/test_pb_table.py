@@ -15,11 +15,23 @@ from typing import Dict, List, Any
 # Add parent directory to path to import pb_table
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+def get_project_root():
+    """Get the project root directory."""
+    # Start from current working directory and look for package.json or .git
+    current = os.getcwd()
+    while current != os.path.dirname(current):  # Not at filesystem root
+        if (os.path.exists(os.path.join(current, 'package.json')) or 
+            os.path.exists(os.path.join(current, '.git'))):
+            return current
+        current = os.path.dirname(current)
+    
+    # Fallback: assume we're in project structure and go up from this file
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    return os.path.dirname(os.path.dirname(current_dir))
+
 def load_test_data(filename: str) -> Dict:
     """Load test data from JSON file in testdata directory."""
-    # Get path to testdata directory (two levels up from this file)
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    project_root = os.path.dirname(os.path.dirname(current_dir))
+    project_root = get_project_root()
     testdata_path = os.path.join(project_root, 'testdata', filename)
     
     with open(testdata_path, 'r', encoding='utf-8') as f:
@@ -1096,7 +1108,9 @@ def export_complex_test_data():
         print(f"✓ Python encoded complex test: {len(complex_test_table['data'])} rows → {len(encoded)} bytes")
         
         # Save for JavaScript testing
-        with open('../../testdata/complex_test_suite_python.pb', 'wb') as f:
+        project_root = get_project_root()
+        output_path = os.path.join(project_root, 'testdata', 'complex_test_suite_python.pb')
+        with open(output_path, 'wb') as f:
             f.write(encoded)
         print("✓ Saved as complex_test_suite_python.pb")
         
@@ -1114,7 +1128,9 @@ def export_complex_test_data():
     
 def cross_platform_test():
     try:
-        with open('../../testdata/complex_test_suite_js.pb', 'rb') as f:
+        project_root = get_project_root()
+        js_file_path = os.path.join(project_root, 'testdata', 'complex_test_suite_js.pb')
+        with open(js_file_path, 'rb') as f:
             js_data = f.read()
         print(f'Loaded JavaScript data: {len(js_data)} bytes')
         # Try to decode with Python
@@ -1122,7 +1138,10 @@ def cross_platform_test():
         print(f'✓ Successfully decoded JavaScript data with Python!')
         print(f'  Rows: {len(decoded["data"])}')
         print(f'  Fields: {len(decoded["header"])}')
-        print(f'  First row: {decoded["data"][0]}')
+        if len(decoded["data"]) > 0:
+            print(f'  First row: {decoded["data"][0]}')
+        else:
+            print('  No data rows found')
                                       
     except Exception as e:
         print(f'✗ Failed to decode JavaScript data with Python: {e}')
