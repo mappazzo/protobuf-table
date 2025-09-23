@@ -544,7 +544,7 @@ get = get_table
 add = add_table
 
 if __name__ == "__main__":
-    # Comprehensive test with dynamic protobuf Row messages
+    # Basic test with dynamic protobuf Row messages
     test_table = {
         'header': [
             {'name': 'id', 'type': 'uint'},

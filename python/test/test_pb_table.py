@@ -8,7 +8,23 @@ to ensure API equivalence and data compatibility.
 
 import sys
 import traceback
+import json
+import os
 from typing import Dict, List, Any
+
+# Add parent directory to path to import pb_table
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+def load_test_data(filename: str) -> Dict:
+    """Load test data from JSON file in testdata directory."""
+    # Get path to testdata directory (two levels up from this file)
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.dirname(os.path.dirname(current_dir))
+    testdata_path = os.path.join(project_root, 'testdata', filename)
+    
+    with open(testdata_path, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+    return data['test_table']
 
 try:
     from pb_table import (
@@ -18,27 +34,15 @@ try:
     )
 except ImportError as e:
     print(f"Error importing pb_table: {e}")
-    print("Make sure to install requirements: pip install -r requirements_pb_table.txt")
+    print("Make sure pb_table.py is in the parent directory")
     sys.exit(1)
 
 def test_basic_array_format():
     """Test basic encoding/decoding with array format (equivalent to JavaScript basic test)."""
     print("Testing basic array format...")
     
-    # Test data similar to JavaScript smallTable
-    test_table = {
-        'header': [
-            {'name': 'id', 'type': 'uint'},
-            {'name': 'name', 'type': 'string'},
-            {'name': 'value', 'type': 'float'},
-            {'name': 'active', 'type': 'bool'}
-        ],
-        'data': [
-            [1, 'test', 3.14, True],
-            [2, 'example', 2.71, False],
-            [3, 'sample', 1.41, True]
-        ]
-    }
+    # Load test data from JSON file
+    test_table = load_test_data('basic_array_format.json')
     
     try:
         # Test encoding
@@ -120,20 +124,8 @@ def test_verbose_object_format():
     """Test encoding/decoding with object format (verbose)."""
     print("\nTesting verbose object format...")
     
-    # Test data with object format
-    test_table = {
-        'header': [
-            {'name': 'id', 'type': 'uint'},
-            {'name': 'name', 'type': 'string'},
-            {'name': 'temperature', 'type': 'float'},
-            {'name': 'active', 'type': 'bool'}
-        ],
-        'data': [
-            {'id': 1, 'name': 'sensor1', 'temperature': 23.5, 'active': True},
-            {'id': 2, 'name': 'sensor2', 'temperature': 24.1, 'active': False},
-            {'id': 3, 'name': 'sensor3', 'temperature': 22.8, 'active': True}
-        ]
-    }
+    # Load test data from JSON file
+    test_table = load_test_data('verbose_object_format.json')
     
     try:
         # Test encoding
@@ -187,44 +179,8 @@ def test_transforms():
     """Test data transforms for compression (equivalent to JavaScript compress test)."""
     print("\nTesting data transforms...")
     
-    # Test data with transforms similar to JavaScript compressTable
-    test_table = {
-        'header': [
-            {
-                'name': 'timestamp',
-                'type': 'uint',
-                'transform': {
-                    'offset': 1609459200,  # Unix timestamp base
-                    'multip': 1,
-                    'decimals': 0
-                }
-            },
-            {
-                'name': 'latitude',
-                'type': 'int',
-                'transform': {
-                    'offset': -42,
-                    'multip': 1000,
-                    'decimals': 3,
-                    'sequence': False
-                }
-            },
-            {
-                'name': 'temperature',
-                'type': 'int',
-                'transform': {
-                    'offset': 0,
-                    'multip': 100,
-                    'decimals': 2
-                }
-            }
-        ],
-        'data': [
-            [1609459260, -41.123456, 23.45],
-            [1609459320, -41.123789, 23.67],
-            [1609459380, -41.124012, 23.89]
-        ]
-    }
+    # Load test data from JSON file
+    test_table = load_test_data('transforms.json')
     
     try:
         # Test encoding with transforms
@@ -265,32 +221,8 @@ def test_sequence_transforms():
     """Test sequence transforms (delta encoding)."""
     print("\nTesting sequence transforms...")
     
-    # Test data with sequence transforms
-    test_table = {
-        'header': [
-            {
-                'name': 'counter',
-                'type': 'uint',
-                'transform': {
-                    'sequence': True
-                }
-            },
-            {
-                'name': 'value',
-                'type': 'int',
-                'transform': {
-                    'offset': 1000,
-                    'sequence': True
-                }
-            }
-        ],
-        'data': [
-            [100, 1010],
-            [105, 1015],
-            [112, 1008],
-            [120, 1025]
-        ]
-    }
+    # Load test data from JSON file
+    test_table = load_test_data('sequence_transforms.json')
     
     try:
         # Test encoding with sequence transforms
@@ -321,23 +253,8 @@ def test_metadata():
     """Test metadata and custom keys support."""
     print("\nTesting metadata support...")
     
-    # Test data with metadata
-    test_table = {
-        'header': [
-            {'name': 'id', 'type': 'uint'},
-            {'name': 'value', 'type': 'float'}
-        ],
-        'meta': {
-            'filename': 'test_data.pb',
-            'owner': 'test_user',
-            'comment': 'Test dataset for validation'
-        },
-        'custom_key': 'custom_value',
-        'data': [
-            [1, 1.1],
-            [2, 2.2]
-        ]
-    }
+    # Load test data from JSON file
+    test_table = load_test_data('metadata.json')
     
     try:
         # Test encoding with metadata
@@ -449,16 +366,7 @@ def test_callback_support():
     """Test callback-style API (JavaScript compatibility)."""
     print("\nTesting callback support...")
     
-    test_table = {
-        'header': [
-            {'name': 'id', 'type': 'uint'},
-            {'name': 'name', 'type': 'string'}
-        ],
-        'data': [
-            [1, 'test'],
-            [2, 'example']
-        ]
-    }
+    test_table = load_test_data('basic_array_format.json')
     
     try:
         # Test successful callback
@@ -503,34 +411,10 @@ def test_random_access():
     print("\nTesting random access functions...")
     
     # Test data for array format
-    test_table = {
-        'header': [
-            {'name': 'id', 'type': 'uint'},
-            {'name': 'name', 'type': 'string'},
-            {'name': 'value', 'type': 'float'}
-        ],
-        'data': [
-            [1, 'first', 1.1],
-            [2, 'second', 2.2],
-            [3, 'third', 3.3],
-            [4, 'fourth', 4.4]
-        ]
-    }
+    test_table = load_test_data('basic_array_format.json')
     
     # Test data for object format
-    test_verbose = {
-        'header': [
-            {'name': 'id', 'type': 'uint'},
-            {'name': 'name', 'type': 'string'},
-            {'name': 'value', 'type': 'float'}
-        ],
-        'data': [
-            {'id': 1, 'name': 'first', 'value': 1.1},
-            {'id': 2, 'name': 'second', 'value': 2.2},
-            {'id': 3, 'name': 'third', 'value': 3.3},
-            {'id': 4, 'name': 'fourth', 'value': 4.4}
-        ]
-    }
+    test_verbose = load_test_data('verbose_object_format.json')
     
     try:
         # Test array format random access
@@ -641,8 +525,8 @@ def test_random_access():
             return False
         
         # Test multiple row access (verbose) with float tolerance
-        rows_verbose = get_verbose(encoded_verbose, [1, 3])
-        expected_verbose = [test_verbose['data'][1], test_verbose['data'][3]]
+        rows_verbose = get_verbose(encoded_verbose, [0, 2])
+        expected_verbose = [test_verbose['data'][0], test_verbose['data'][2]]
         
         # Compare with float tolerance
         multi_verbose_matches = True
@@ -689,26 +573,7 @@ def test_sequence_access_restriction():
     print("\nTesting sequence transform access restrictions...")
     
     # Test data with sequence transforms
-    test_table = {
-        'header': [
-            {
-                'name': 'counter',
-                'type': 'uint',
-                'transform': {
-                    'sequence': True
-                }
-            },
-            {
-                'name': 'value',
-                'type': 'int'
-            }
-        ],
-        'data': [
-            [100, 1000],
-            [105, 1100],
-            [112, 1200]
-        ]
-    }
+    test_table = load_test_data('sequence_transforms.json')
     
     try:
         encoded = encode_table(test_table)
@@ -760,39 +625,19 @@ def test_data_addition():
     print("\nTesting data addition functions...")
     
     # Test data for array format
-    initial_table = {
-        'header': [
-            {'name': 'id', 'type': 'uint'},
-            {'name': 'name', 'type': 'string'},
-            {'name': 'value', 'type': 'float'}
-        ],
-        'data': [
-            [1, 'first', 1.1],
-            [2, 'second', 2.2]
-        ]
-    }
+    initial_table = load_test_data('basic_array_format.json')
     
     additional_data = [
-        [3, 'third', 3.3],
-        [4, 'fourth', 4.4]
+        [4, "test", 3.14, True],
+        [5, "example", 2.71, False],
     ]
     
     # Test data for object format
-    initial_verbose = {
-        'header': [
-            {'name': 'id', 'type': 'uint'},
-            {'name': 'name', 'type': 'string'},
-            {'name': 'value', 'type': 'float'}
-        ],
-        'data': [
-            {'id': 1, 'name': 'first', 'value': 1.1},
-            {'id': 2, 'name': 'second', 'value': 2.2}
-        ]
-    }
+    initial_verbose = load_test_data('verbose_object_format.json')
     
     additional_verbose_data = [
-        {'id': 3, 'name': 'third', 'value': 3.3},
-        {'id': 4, 'name': 'fourth', 'value': 4.4}
+        {"id": 2, "name": "sensor2", "temperature": 24.1, "active": False },
+        {"id": 3, "name": "sensor3", "temperature": 22.8, "active": True }
     ]
     
     try:
@@ -898,22 +743,12 @@ def test_indexing():
     """Test buffer indexing function (get_index)."""
     print("\nTesting buffer indexing...")
     
-    test_table = {
-        'header': [
-            {'name': 'id', 'type': 'uint'},
-            {'name': 'name', 'type': 'string'}
-        ],
-        'data': [
-            [1, 'first'],
-            [2, 'second'],
-            [3, 'third'],
-            [4, 'fourth']
-        ]
-    }
+    test_table = load_test_data('complex_test_suite.json')
     
     try:
         encoded = encode_table(test_table)
         index = get_index(encoded)
+        print("Index", index)
         
         # Verify index has correct number of entries
         if len(index) == len(test_table['data']):
@@ -948,36 +783,10 @@ def test_statistics_calculation():
     print("\nTesting statistics calculation...")
     
     # Test data with numerical columns
-    test_table = {
-        'header': [
-            {'name': 'id', 'type': 'uint'},
-            {'name': 'name', 'type': 'string'},
-            {'name': 'temperature', 'type': 'float'},
-            {'name': 'pressure', 'type': 'int'},
-            {'name': 'active', 'type': 'bool'}
-        ],
-        'data': [
-            [1, 'sensor1', 23.5, 1013, True],
-            [2, 'sensor2', 25.2, 1015, False],
-            [3, 'sensor3', 21.8, 1010, True],
-            [4, 'sensor4', 26.1, 1018, False],
-            [5, 'sensor5', 22.3, 1012, True]
-        ]
-    }
+    test_table = load_test_data('complex_test_suite.json')
     
     # Test verbose format data
-    test_verbose = {
-        'header': [
-            {'name': 'id', 'type': 'uint'},
-            {'name': 'name', 'type': 'string'},
-            {'name': 'value', 'type': 'float'}
-        ],
-        'data': [
-            {'id': 10, 'name': 'test1', 'value': 1.5},
-            {'id': 20, 'name': 'test2', 'value': 3.7},
-            {'id': 30, 'name': 'test3', 'value': 2.1}
-        ]
-    }
+    test_verbose = load_test_data('verbose_object_format.json')
     
     try:
         # Test array format with statistics
@@ -1079,39 +888,20 @@ def test_statistics_updates():
     print("\nTesting statistics updates...")
     
     # Initial data
-    initial_table = {
-        'header': [
-            {'name': 'id', 'type': 'uint'},
-            {'name': 'value', 'type': 'float'},
-            {'name': 'count', 'type': 'int'}
-        ],
-        'data': [
-            [1, 10.5, 100],
-            [2, 15.2, 150]
-        ]
-    }
+    initial_table = load_test_data('basic_array_data.json')
     
     # Additional data
     additional_data = [
-        [3, 8.7, 80],   # New min for value, new min for count
-        [4, 18.9, 200]  # New max for value, new max for count
+        [3, "test", 0.14, True], # New min for value
+        [4, "example", 10, False] # New max for value
     ]
     
     # Verbose format data
-    initial_verbose = {
-        'header': [
-            {'name': 'id', 'type': 'uint'},
-            {'name': 'score', 'type': 'float'}
-        ],
-        'data': [
-            {'id': 1, 'score': 85.5},
-            {'id': 2, 'score': 92.3}
-        ]
-    }
+    initial_verbose = load_test_data('verbose_object_format.json')
     
     additional_verbose = [
-        {'id': 3, 'score': 78.1},  # New min
-        {'id': 4, 'score': 96.7}   # New max
+        {"id": 2, "name": "sensor2", "temperature": 10.1, "active": False}, # New min
+        {"id": 3, "name": "sensor3", "temperature": 45.8, "active": True}  # New max
     ]
     
     try:
@@ -1195,17 +985,7 @@ def test_comprehensive_api():
     """Test comprehensive API compatibility with all new functions."""
     print("\nTesting comprehensive API compatibility...")
     
-    test_table = {
-        'header': [
-            {'name': 'id', 'type': 'uint'},
-            {'name': 'name', 'type': 'string'},
-            {'name': 'score', 'type': 'float'}
-        ],
-        'data': [
-            [1, 'alice', 95.5],
-            [2, 'bob', 87.2]
-        ]
-    }
+    test_table = load_test_data('api_test_suite.json')
     
     try:
         # Test full workflow: encode -> get -> add -> decode
@@ -1236,7 +1016,7 @@ def test_comprehensive_api():
             return False
         
         # Add new data
-        new_data = [[3, 'charlie', 92.8]]
+        new_data = [[1609459480, -41.124230, 24.12, 120, 1025, "sensor_06", False]]
         expanded = add_table(encoded, new_data)
         
         # Verify expansion with float tolerance
@@ -1303,6 +1083,52 @@ def test_comprehensive_api():
         traceback.print_exc()
         return False
 
+def export_complex_test_data():
+    """Export the most complex test data for cross-language testing."""
+    print("\nExporting complex test data for cross-language testing...")
+    
+    # Create the most complex test case combining multiple features
+    complex_test_table = load_test_data('complex_test_suite.json')
+    
+    try:
+        # Encode with Python
+        encoded = encode_table(complex_test_table)
+        print(f"✓ Python encoded complex test: {len(complex_test_table['data'])} rows → {len(encoded)} bytes")
+        
+        # Save for JavaScript testing
+        with open('../../testdata/complex_test_suite_python.pb', 'wb') as f:
+            f.write(encoded)
+        print("✓ Saved as complex_test_suite_python.pb")
+        
+        # Test Python can decode its own data
+        decoded = decode_table(encoded)
+        print(f"✓ Python self-decode: {len(decoded['data'])} rows")
+        
+        return True
+        
+    except Exception as e:
+        print(f"✗ Error exporting complex test data: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+    
+def cross_platform_test():
+    try:
+        with open('../../testdata/complex_test_suite_js.pb', 'rb') as f:
+            js_data = f.read()
+        print(f'Loaded JavaScript data: {len(js_data)} bytes')
+        # Try to decode with Python
+        decoded = decode_table(js_data)
+        print(f'✓ Successfully decoded JavaScript data with Python!')
+        print(f'  Rows: {len(decoded["data"])}')
+        print(f'  Fields: {len(decoded["header"])}')
+        print(f'  First row: {decoded["data"][0]}')
+                                      
+    except Exception as e:
+        print(f'✗ Failed to decode JavaScript data with Python: {e}')
+        import traceback
+        traceback.print_exc()
+
 def run_all_tests():
     """Run all test cases and report results."""
     print("=" * 60)
@@ -1321,7 +1147,8 @@ def run_all_tests():
         test_sequence_access_restriction,
         test_data_addition,
         test_indexing,
-        test_comprehensive_api
+        test_comprehensive_api,
+        export_complex_test_data
     ]
     
     passed = 0
@@ -1349,5 +1176,22 @@ def run_all_tests():
         return False
 
 if __name__ == "__main__":
-    success = run_all_tests()
+    
+    args = sys.argv
+    print(args)
+    if args[1] == 'cross':
+        success = cross_platform_test()
+    else:
+        success = run_all_tests()
+
+    if success:
+        print("\n" + "🎉" * 20)
+        print("All tests passed! Now exporting complex test data...")
+        export_success = export_complex_test_data()
+        if export_success:
+            print("✅ Complex test data exported successfully!")
+        else:
+            print("❌ Failed to export complex test data.")
+            success = False
+    
     sys.exit(0 if success else 1)

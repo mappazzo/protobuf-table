@@ -1,0 +1,16 @@
+{
+  "description": "Verbose object format test data with sensor readings",
+  "test_table": {
+    "header": [
+      {"name": "id", "type": "uint"},
+      {"name": "name", "type": "string"},
+      {"name": "temperature", "type": "float"},
+      {"name": "active", "type": "bool"}
+    ],
+    "data": [
+      {"id": 1, "name": "sensor1", "temperature": 23.5, "active": true},
+      {"id": 2, "name": "sensor2", "temperature": 24.1, "active": false},
+      {"id": 3, "name": "sensor3", "temperature": 22.8, "active": true}
+    ]
+  }
+}

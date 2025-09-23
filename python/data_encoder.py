@@ -166,11 +166,15 @@ class DataEncoder:
         # Get message classes
         row_class, data_class = self._create_js_compatible_schema(header_fields)
         
+        # Create a writer to accumulate all row messages (like JavaScript does)
+        from google.protobuf.internal.encoder import _VarintEncoder
+        from google.protobuf.internal.wire_format import WIRETYPE_LENGTH_DELIMITED
+        
         buffer = io.BytesIO()
         
-        # Encode each row as a separate message with length delimiter
+        # Encode each row as a separate Data message (matching JavaScript exactly)
         for row_data in data_rows:
-            # Create a Data message with single Row
+            # Create a Data message with single Row (like JavaScript: { data: [{}] })
             data_msg = data_class()
             row_msg = data_msg.data.add()
             
@@ -193,9 +197,15 @@ class DataEncoder:
                 
                 setattr(row_msg, field_name, value)
             
-            # Serialize and write with length delimiter
+            # Encode the Data message directly to buffer (like JavaScript encodeData)
+            # This matches how JavaScript calls encodeData(protocol, dataObj, writer)
             serialized = data_msg.SerializeToString()
-            buffer.write(_VarintBytes(len(serialized)))
+            
+            # Write with proper protobuf field encoding (tag + length + data)
+            # Tag 1 with WIRETYPE_LENGTH_DELIMITED (like JavaScript does)
+            tag = (1 << 3) | WIRETYPE_LENGTH_DELIMITED
+            _VarintEncoder()(buffer.write, tag, False)
+            _VarintEncoder()(buffer.write, len(serialized), False)
             buffer.write(serialized)
         
         return buffer.getvalue()
@@ -210,8 +220,20 @@ class DataEncoder:
         offset = 0
         
         while offset < len(data_bytes):
-            # Read length delimiter
-            length, new_offset = _DecodeVarint32(data_bytes, offset)
+            # Read the tag and wire type
+            from google.protobuf.internal.decoder import _DecodeVarint32
+            from google.protobuf.internal.wire_format import WIRETYPE_LENGTH_DELIMITED
+            
+            # Read tag
+            tag, new_offset = _DecodeVarint32(data_bytes, offset)
+            wire_type = tag & 7
+            field_number = tag >> 3
+            
+            if wire_type != WIRETYPE_LENGTH_DELIMITED or field_number != 1:
+                raise ProtobufTableError(f'Unexpected wire format: tag={tag}, wire_type={wire_type}, field={field_number}')
+            
+            # Read length
+            length, new_offset = _DecodeVarint32(data_bytes, new_offset)
             
             # Read message data
             message_data = data_bytes[new_offset:new_offset + length]
