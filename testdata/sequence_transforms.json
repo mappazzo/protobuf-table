@@ -1,0 +1,28 @@
+{
+  "description": "Sequence transforms test - delta encoding with sequence transforms",
+  "test_table": {
+    "header": [
+      {
+        "name": "counter",
+        "type": "uint",
+        "transform": {
+          "sequence": true
+        }
+      },
+      {
+        "name": "value",
+        "type": "int",
+        "transform": {
+          "offset": 1000,
+          "sequence": true
+        }
+      }
+    ],
+    "data": [
+      [100, 1010],
+      [105, 1015],
+      [112, 1008],
+      [120, 1025]
+    ]
+  }
+}

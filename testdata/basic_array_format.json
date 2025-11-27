@@ -1,0 +1,16 @@
+{
+  "description": "Basic array format test data - equivalent to JavaScript smallTable",
+  "test_table": {
+    "header": [
+      {"name": "id", "type": "uint"},
+      {"name": "name", "type": "string"},
+      {"name": "value", "type": "float"},
+      {"name": "active", "type": "bool"}
+    ],
+    "data": [
+      [1, "test", 3.14, true],
+      [2, "example", 2.71, false],
+      [3, "sample", 1.41, true]
+    ]
+  }
+}

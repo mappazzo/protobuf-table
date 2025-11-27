@@ -1,17 +1,14 @@
 // protobuf-table
-// implimentation of googles protocol buffer for variable format structured tables
+// implementation of googles protocol buffer for variable format structured tables
+// Updated version using compiled JSON schema for browser and Node.js compatibility
 
 // "THE BEER-WARE LICENSE" (Revision 42):
 // Mappazzo (info@mappazzo.com) wrote this file. As long as you retain this notice you
 // can do whatever you want with this stuff. If we meet some day, and you think
 // this stuff is worth it, you can buy me a beer in return. Cheers, Kelly Norris
 
-//* global pbuf */
 var pbuf = require('protobufjs')
-
-var Root = pbuf.Root
-var Reader = pbuf.Reader
-var Writer = pbuf.Writer
+var headJson = require('./head.json')
 
 var types = {
   'string': 'string',
@@ -21,73 +18,81 @@ var types = {
   'bool': 'bool'
 }
 
-// Header protocol
-var headProto = {
-  FileHead: {
-    nested: {
-      Transform: {
-        fields: {
-          offset: { id: 1, rule: 'optional', type: 'int32' },
-          multip: { id: 2, rule: 'optional', type: 'int32' },
-          decimals: { id: 3, rule: 'optional', type: 'int32' },
-          sequence: { id: 4, rule: 'optional', type: 'bool' }
-        }
-      },
-      Field: {
-        fields: {
-          name: { id: 1, rule: 'required', type: 'string' },
-          type: { id: 2, rule: 'required', type: 'string' },
-          transform: { id: 3, rule: 'optional', type: 'Transform' }
-        }
-      },
-      CustomKey: {
-        fields: {
-          key: { id: 1, rule: 'required', type: 'string' },
-          str: { id: 2, rule: 'optional', type: 'string' },
-          int: { id: 3, rule: 'optional', type: 'sint32' },
-          uint: { id: 4, rule: 'optional', type: 'int32' },
-          flt: { id: 5, rule: 'optional', type: 'float' },
-          obj: { id: 6, rule: 'optional', type: 'bytes' }
-        }
-      },
-      Meta: {
-        fields: {
-          filename: { id: 1, rule: 'optional', type: 'string' },
-          owner: { id: 2, rule: 'optional', type: 'string' },
-          link: { id: 3, rule: 'optional', type: 'string' },
-          comment: { id: 4, rule: 'optional', type: 'string' }
-        }
-      },
-      Header: {
-        fields: {
-          header: { id: 1, rule: 'repeated', type: 'Field' },
-          meta: { id: 2, rule: 'optional', type: 'Meta' },
-          _cKey: { id: 3, rule: 'repeated', type: 'CustomKey' }
+// Load the compiled JSON schema (works in both Node.js and browser)
+var headerRoot = pbuf.Root.fromJSON(headJson)
+
+// Statistics calculator
+var statsCalculator = {
+  calculateFieldStats: function (data, fieldIndex, fieldType) {
+    if (fieldType !== 'int' && fieldType !== 'uint' && fieldType !== 'float') {
+      return null
+    }
+    
+    var values = []
+    for (var i = 0; i < data.length; i++) {
+      var row = data[i]
+      if (fieldIndex < row.length && row[fieldIndex] != null) {
+        var val = parseFloat(row[fieldIndex])
+        if (!isNaN(val)) {
+          values.push(val)
         }
       }
     }
+    
+    if (values.length === 0) {
+      return null
+    }
+    
+    var sum = values.reduce(function (a, b) { return a + b }, 0)
+    var min = Math.min.apply(Math, values)
+    var max = Math.max.apply(Math, values)
+    
+    return {
+      start: values[0],
+      end: values[values.length - 1],
+      min: min,
+      max: max,
+      mean: sum / values.length
+    }
+  },
+  
+  calculateAllStats: function (obj) {
+    var result = JSON.parse(JSON.stringify(obj))
+    
+    // Calculate field statistics
+    for (var i = 0; i < result.header.length; i++) {
+      var fieldDef = result.header[i]
+      var stats = this.calculateFieldStats(obj.data, i, fieldDef.type)
+      if (stats) {
+        fieldDef.stats = stats
+      }
+    }
+    
+    // Update meta with row count
+    if (!result.meta) {
+      result.meta = {}
+    }
+    result.meta.row_count = obj.data.length
+    
+    return result
   }
 }
 
-// Protocol buffer interface
-var protocolFromHeader = function (obj, cb) {
+// Protocol buffer interface using loaded schema
+function protocolFromHeader(obj, cb) {
   var dataJSON = {
-    // nested: {
     DataArray: {
       nested: {
         Row: {
-          fields: {
-          }
+          fields: {}
         },
         Data: {
           fields: {
-            data: { id: 3, rule: 'repeated', type: 'Row' },
-            _cKey: { id: 4, rule: 'repeated', type: 'CustomKey' }
+            data: { id: 1, rule: 'repeated', type: 'Row' }
           }
         }
       }
     }
-    // }
   }
   var fields = {}
   var err = null
@@ -104,79 +109,67 @@ var protocolFromHeader = function (obj, cb) {
     cb(err)
   } else {
     dataJSON.DataArray.nested.Row.fields = fields
-    dataJSON.DataArray.nested.CustomKey = headProto.FileHead.nested.CustomKey
-    var root = new Root()
+    var root = new pbuf.Root()
     root.addJSON(dataJSON)
     cb(null, root)
   }
 }
+
 var decodeData = function (protocol, reader, cb) {
   var dataProtocol = protocol.lookupType('DataArray.Data')
   var data = dataProtocol.decode(reader)
   cb(null, data)
 }
+
 var encodeData = function (protocol, obj, writer, cb) {
   var dataProtocol = protocol.lookupType('DataArray.Data')
   var verifyError = dataProtocol.verify(obj)
   if (verifyError) {
-    // console.log('error encoding: ', obj)
     var vErr = new Error(verifyError)
     console.log(vErr.message)
     cb(vErr)
   } else {
-    if (!writer) writer = new Writer()
+    if (!writer) writer = new pbuf.Writer()
     dataProtocol.encode(obj, writer)
     cb(null, writer)
   }
 }
-var decodeCustomKeys = function (obj) {
-  if (obj._cKey) {
-    obj._cKey.forEach(function (customObj) {
-      if (obj[customObj.key]) {
-        if (!Array.isArray(obj[customObj.key])) {
-          var existVal = obj[customObj.key]
-          obj[customObj.key] = []
-          obj[customObj.key].push(existVal)
-        }
-        if (customObj.str) obj[customObj.key].push(customObj.str)
-        if (customObj.int) obj[customObj.key].push(customObj.int)
-        if (customObj.uint) obj[customObj.key].push(customObj.uint)
-        if (customObj.flt) obj[customObj.key].push(customObj.flt)
-        if (customObj.obj) obj[customObj.key].push(customObj.obj)
-      } else {
-        if (customObj.str) obj[customObj.key] = customObj.str
-        if (customObj.int) obj[customObj.key] = customObj.int
-        if (customObj.uint) obj[customObj.key] = customObj.uint
-        if (customObj.flt) obj[customObj.key] = customObj.flt
-        if (customObj.obj) obj[customObj.key] = customObj.obj
-      }
-    })
-    delete obj._cKey
-  }
-  return obj
-}
+
 var decodeHeader = function (reader, cb) {
-  var root = new Root()
-  root.addJSON(headProto)
-  var headMsg = root.lookupType('FileHead.Header')
+  var headMsg = headerRoot.lookupType('pbTableHeader.tableHead')
   var head = headMsg.decodeDelimited(reader)
-  var result = decodeCustomKeys(head)
-  cb(null, result)
+  
+  // Convert protobuf field names to match expected format
+  if (head.meta && head.meta.rowCount !== undefined) {
+    head.meta.row_count = head.meta.rowCount
+    delete head.meta.rowCount
+  }
+  
+  
+  cb(null, head)
 }
+
 var encodeHeader = function (obj, writer, cb) {
-  var root = new Root()
-  root.addJSON(headProto)
-  var headMsg = root.lookupType('FileHead.Header')
-  var verifyError = headMsg.verify(obj)
+  var headMsg = headerRoot.lookupType('pbTableHeader.tableHead')
+  
+  // Convert field names to match protobuf schema
+  var objCopy = JSON.parse(JSON.stringify(obj))
+  if (objCopy.meta && objCopy.meta.row_count !== undefined) {
+    objCopy.meta.rowCount = objCopy.meta.row_count
+    delete objCopy.meta.row_count
+  }
+  
+  var verifyError = headMsg.verify(objCopy)
   if (verifyError) {
     var vErr = new Error(verifyError)
     cb(vErr)
   } else {
-    if (!writer) writer = new Writer()
-    headMsg.encodeDelimited(obj, writer)
+    if (!writer) writer = new pbuf.Writer()
+    headMsg.encodeDelimited(objCopy, writer)
     cb(null, writer)
   }
 }
+
 var indexData = function (reader, cb) {
   var index = []
   var bInd = reader.pos
@@ -184,7 +177,7 @@ var indexData = function (reader, cb) {
     var t = reader.uint32()
     var type = (t & 7)
     var tag = (t >>> 3)
-    if (type === 2 || tag === 3) { // all data entries are type 2 'embeded message' and tag 3 'fixed by protocol'
+    if (type === 2 || tag === 1) {
       index.push(bInd)
       var len = reader.uint32()
       bInd = reader.pos + len
@@ -196,6 +189,7 @@ var indexData = function (reader, cb) {
   }
   cb(null, index)
 }
+
 var decodeRow = function (protocol, reader, request, cb) {
   var bInd = reader.pos
   var ind = 0
@@ -206,7 +200,7 @@ var decodeRow = function (protocol, reader, request, cb) {
     var t = reader.uint32()
     var type = (t & 7)
     var tag = (t >>> 3)
-    if (type === 2 || tag === 3) { // all data entries are type 2 'embeded message' and tag 3 'fixed by protocol'
+    if (type === 2 || tag === 1) {
       if (Array.isArray(request)) {
         var found = false
         request.forEach(function (val, ri) {
@@ -243,7 +237,7 @@ var decodeRow = function (protocol, reader, request, cb) {
   }
 }
 
-// Transform data
+// Transform data (unchanged - matches Python exactly)
 var transformInteger = {
   parse: function (value, lastval, transform) {
     if (!value) value = 0
@@ -275,18 +269,22 @@ var transformInteger = {
   }
 }
 
-// Verbose data format
+// Verbose data format (with automatic statistics calculation)
 var encodeVerbose = function (obj, cb) {
   if (!obj.header || !obj.data) {
     var err = new Error('object is not a valid format')
     return cb(err)
   }
-  encodeHeader(obj, null, function (err, writer) {
+  
+  // Calculate statistics automatically
+  var objWithStats = statsCalculator.calculateAllStats(obj)
+  
+  encodeHeader(objWithStats, null, function (err, writer) {
     if (err) return cb(err)
-    protocolFromHeader(obj, function (err, protocol) {
+    protocolFromHeader(objWithStats, function (err, protocol) {
       if (err) return cb(err)
-      var enc = JSON.parse(JSON.stringify(obj))
-      obj.header.forEach(function (head, col) {
+      var enc = JSON.parse(JSON.stringify(objWithStats))
+      objWithStats.header.forEach(function (head, col) {
         if (head.type === 'int' || head.type === 'uint') {
           if (head.transform) {
             enc.data.forEach(function (dataObj, row) {
@@ -311,7 +309,6 @@ var encodeVerbose = function (obj, cb) {
           })
         }
       })
-      // console.log('encodeVerbose obj', enc)
       encodeData(protocol, enc, writer, function (err, writer) {
         if (err) return cb(err)
         var encoded = writer.finish()
@@ -320,8 +317,9 @@ var encodeVerbose = function (obj, cb) {
     })
   })
 }
+
 var decodeVerbose = function (buff, cb) {
-  var reader = new Reader(buff)
+  var reader = new pbuf.Reader(buff)
   decodeHeader(reader, function (err, headObj) {
     if (err) return cb(err)
     protocolFromHeader(headObj, function (err, protocol) {
@@ -343,13 +341,15 @@ var decodeVerbose = function (buff, cb) {
             result.data[row][head.name] = value
           })
         })
-        cb(null, JSON.parse(JSON.stringify(result)))
+        // Ensure statistics are preserved in the result
+        cb(null, result)
       })
     })
   })
 }
+
 var getVerbose = function (buff, request, cb) {
-  var reader = new Reader(buff)
+  var reader = new pbuf.Reader(buff)
   decodeHeader(reader, function (err, headObj) {
     if (err) return cb(err)
     protocolFromHeader(headObj, function (err, protocol) {
@@ -400,6 +400,7 @@ var getVerbose = function (buff, request, cb) {
     })
   })
 }
+
 var addVerbose = function (buff, data, cb) {
   decodeHeader(buff, function (err, headObj) {
     if (err) return cb(err)
@@ -418,7 +419,7 @@ var addVerbose = function (buff, data, cb) {
   })
 }
 
-// Array data format
+// Array data format (with automatic statistics calculation)
 var encodeTable = function (obj, cb) {
   var err
   if (!obj.header || !obj.data) {
@@ -429,9 +430,13 @@ var encodeTable = function (obj, cb) {
     err = new Error('object is not an array')
     return cb(err)
   }
-  encodeHeader(obj, null, function (err, writer) {
+  
+  // Calculate statistics automatically
+  var objWithStats = statsCalculator.calculateAllStats(obj)
+  
+  encodeHeader(objWithStats, null, function (err, writer) {
     if (err) return cb(err)
-    protocolFromHeader(obj, function (err, protocol) {
+    protocolFromHeader(objWithStats, function (err, protocol) {
       if (err) return cb(err)
       var error = null
       obj.data.forEach(function (data, row) {
@@ -462,8 +467,9 @@ var encodeTable = function (obj, cb) {
     })
   })
 }
+
 var decodeTable = function (buff, cb) {
-  var reader = new Reader(buff)
+  var reader = new pbuf.Reader(buff)
   decodeHeader(reader, function (err, headObj) {
     if (err) return cb(err)
     protocolFromHeader(headObj, function (err, protocol) {
@@ -491,8 +497,9 @@ var decodeTable = function (buff, cb) {
     })
   })
 }
+
 var getTable = function (buff, request, cb) {
-  var reader = new Reader(buff)
+  var reader = new pbuf.Reader(buff)
   decodeHeader(reader, function (err, headObj) {
     if (err) return cb(err)
     protocolFromHeader(headObj, function (err, protocol) {
@@ -541,16 +548,17 @@ var getTable = function (buff, request, cb) {
     })
   })
 }
+
 var addTable = function (buff, data, cb) {
   decodeHeader(buff, function (err, headObj) {
     if (err) return cb(err)
     protocolFromHeader(headObj, function (err, protocol) {
       if (err) return cb(err)
-      var writer = new Writer()
+      var writer = new pbuf.Writer()
       data.forEach(function (rowData, row) {
-        var dataObj = [{}]
+        var dataObj = { data: [{}] }
         rowData.forEach(function (value, ind, obj) {
-          dataObj[0][headObj.header[ind].name] = value
+          dataObj.data[0][headObj.header[ind].name] = value
         })
         encodeData(protocol, dataObj, writer, function (err, writer) {
           if (err) return cb(err)
@@ -568,7 +576,7 @@ var addTable = function (buff, data, cb) {
 
 // Indexing and lookup
 var getIndex = function (buff, cb) {
-  var reader = new Reader(buff)
+  var reader = new pbuf.Reader(buff)
   var headLen = reader.uint32()
   var err = null
   if (reader.pos + headLen < reader.len) {
@@ -596,5 +604,6 @@ module.exports = {
   decode: decodeTable,
   get: getTable,
   add: addTable,
-  getIndex
+  getIndex,
+  statsCalculator  // Export for testing
 }

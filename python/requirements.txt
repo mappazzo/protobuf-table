@@ -1,0 +1,4 @@
+# Requirements for protobuf-table Python implementation
+protobuf==5.28.3
+py2proto==2.3.1
+

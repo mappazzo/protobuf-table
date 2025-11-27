@@ -1,0 +1,40 @@
+{
+  "description": "Data transforms test - equivalent to JavaScript compressTable with offset, multip, decimals",
+  "test_table": {
+    "header": [
+      {
+        "name": "timestamp",
+        "type": "uint",
+        "transform": {
+          "offset": 1609459200,
+          "multip": 1,
+          "decimals": 0
+        }
+      },
+      {
+        "name": "latitude",
+        "type": "int",
+        "transform": {
+          "offset": -42,
+          "multip": 1000,
+          "decimals": 3,
+          "sequence": false
+        }
+      },
+      {
+        "name": "temperature",
+        "type": "int",
+        "transform": {
+          "offset": 0,
+          "multip": 100,
+          "decimals": 2
+        }
+      }
+    ],
+    "data": [
+      [1609459260, -41.123456, 23.45],
+      [1609459320, -41.123789, 23.67],
+      [1609459380, -41.124012, 23.89]
+    ]
+  }
+}

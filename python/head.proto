@@ -1,0 +1,48 @@
+// pbTableHeader.proto
+syntax = "proto3";
+package pbTableHeader;
+
+message Transform {
+  int32 offset = 1;
+  int32 multip = 2;
+  int32 decimals = 3;
+  bool sequence = 4;
+}
+
+message Stats {
+  double start = 1;  // First value in the dataset
+  double end = 2;    // Last value in the dataset
+  double min = 3;    // Minimum value
+  double max = 4;    // Maximum value
+  double mean = 5;   // Average value
+}
+
+message Field {
+  string name = 1;
+  string type = 2;
+  Transform transform = 6;
+  Stats stats = 7;  // Statistical information for numeric fields
+}
+
+message Meta {
+  string name = 1;
+  string owner = 2;
+  string link = 3;
+  string comment = 4;
+  int32 row_count = 5;  // Total number of rows
+}
+
+message tableHead {
+  repeated Field header = 1;
+  Meta meta = 2;
+}
+
+// Data messages for table content
+message Row {
+  // Dynamic fields will be added based on table header
+  // This is a placeholder - actual fields determined at runtime
+}
+
+message Data {
+  repeated Row data = 1;
+}

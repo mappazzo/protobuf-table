@@ -1,0 +1,19 @@
+{
+  "description": "Metadata and custom keys support test",
+  "test_table": {
+    "header": [
+      {"name": "id", "type": "uint"},
+      {"name": "value", "type": "float"}
+    ],
+    "meta": {
+      "filename": "test_data.pb",
+      "owner": "test_user",
+      "comment": "Test dataset for validation"
+    },
+    "custom_key": "custom_value",
+    "data": [
+      [1, 1.1],
+      [2, 2.2]
+    ]
+  }
+}
